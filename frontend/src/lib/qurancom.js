@@ -59,4 +59,10 @@ export const qurancom = {
     }
     return allVerses;
   },
+
+  // Get all Juzs metadata
+  juzs: () => quranApi.get("/juzs").then((r) => r.data.juzs),
+
+  // Get first verse of a specific page
+  pageStart: (page) => quranApi.get(`/verses/by_page/${page}`, { params: { per_page: 1 } }).then((r) => r.data.verses[0]),
 };
