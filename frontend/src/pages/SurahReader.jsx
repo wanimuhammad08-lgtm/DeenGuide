@@ -479,66 +479,86 @@ export default function SurahReader() {
               </button>
             </div>
             
-            <div className="p-4 border-b border-border/40">
-              <div className="flex bg-accent/50 rounded-lg p-1 mb-4 text-[13px] font-medium border border-border/40">
-                <button onClick={() => setSidebarTab('surah')} className={`flex-1 py-1.5 rounded transition-all ${sidebarTab === 'surah' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Surah</button>
-                <button onClick={() => setSidebarTab('verse')} className={`flex-1 py-1.5 rounded transition-all ${sidebarTab === 'verse' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Verse</button>
-                <button onClick={() => setSidebarTab('juz')} className={`flex-1 py-1.5 rounded transition-all ${sidebarTab === 'juz' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Juz</button>
-                <button onClick={() => setSidebarTab('page')} className={`flex-1 py-1.5 rounded transition-all ${sidebarTab === 'page' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Page</button>
+            <div className="px-4 pt-3 pb-0 border-b border-border/40">
+              <div className="flex gap-4 text-[14px] font-semibold mb-0">
+                <button onClick={() => setSidebarTab('surah')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'surah' || sidebarTab === 'verse' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Surah</button>
+                <button onClick={() => setSidebarTab('verse')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'verse' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Verse</button>
+                <button onClick={() => setSidebarTab('juz')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'juz' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Juz</button>
+                <button onClick={() => setSidebarTab('page')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'page' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Page</button>
               </div>
-              
-              {['surah', 'juz'].includes(sidebarTab) && (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input 
-                    type="text" 
-                    placeholder={`Search ${sidebarTab === 'surah' ? 'Surah' : 'Juz'}...`}
-                    className="w-full bg-accent/30 border border-border/50 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#178b50]"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              )}
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 scroll-thin">
-              {sidebarTab === 'surah' && surahsList
-                .filter(s => s.englishName.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((s) => (
-                <Link 
-                  key={s.number} 
-                  to={`/quran/${s.number}`}
-                  onClick={() => setIsSidebarOpen(false)}
-                  className={`flex items-center gap-4 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${s.number === num ? "bg-accent/80 text-foreground border-l-2 border-[#178b50]" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"}`}
-                >
-                  <span className={`w-6 text-xs ${s.number === num ? "text-[#178b50]" : ""}`}>{s.number}</span>
-                  <span>{s.englishName}</span>
-                </Link>
-              ))}
+            <div className="flex-1 overflow-y-auto scroll-thin">
+              {/* Surah Tab: side-by-side list with verse numbers column */}
+              {(sidebarTab === 'surah' || sidebarTab === 'verse') && (
+                <div className="flex h-full">
+                  {/* Left: Surah search + list */}
+                  <div className="flex-1 flex flex-col border-r border-border/40">
+                    <div className="p-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search Surah"
+                          className="w-full bg-accent/20 border border-border/40 rounded-lg pl-8 pr-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#178b50]"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {surahsList
+                        .filter(s => s.englishName.toLowerCase().includes(searchQuery.toLowerCase()) || String(s.number).includes(searchQuery))
+                        .map((s) => (
+                          <Link
+                            key={s.number}
+                            to={`/quran/${s.number}`}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-colors ${s.number === num ? 'bg-[#178b50]/10 text-foreground border-l-2 border-[#178b50]' : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'}`}
+                          >
+                            <span className={`w-5 text-xs shrink-0 ${s.number === num ? 'text-[#178b50] font-bold' : ''}`}>{s.number}</span>
+                            <span className="truncate">{s.englishName}</span>
+                          </Link>
+                        ))
+                      }
+                    </div>
+                  </div>
 
-              {sidebarTab === 'verse' && (
-                <div className="grid grid-cols-5 gap-2">
-                  {data && Array.from({ length: data.ayahs.length }, (_, i) => i + 1).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => {
-                        setIsSidebarOpen(false);
-                        const el = document.querySelector(`[data-ayah-row="${v}"]`);
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
-                          setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
-                        }
-                      }}
-                      className="aspect-square flex items-center justify-center rounded-lg border border-border/50 bg-accent/30 text-sm font-medium text-foreground hover:bg-primary/10 hover:border-primary/50 transition-all"
-                    >
-                      {v}
-                    </button>
-                  ))}
+                  {/* Right: Verse numbers for the current surah */}
+                  <div className="w-[72px] shrink-0 overflow-y-auto">
+                    <div className="p-2 sticky top-0 bg-card z-10 border-b border-border/40">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block text-center">Verse</span>
+                    </div>
+                    <div className="flex flex-col">
+                      {data && Array.from({ length: data.ayahs.length }, (_, i) => i + 1).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => {
+                            setIsSidebarOpen(false);
+                            setTimeout(() => {
+                              const el = document.querySelector(`[data-ayah-row="${v}"]`);
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                el.classList.add('bg-primary/10');
+                                setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+                              }
+                            }, 100);
+                          }}
+                          className="w-full py-2 text-[13px] font-medium text-center text-muted-foreground hover:bg-[#178b50]/10 hover:text-[#178b50] transition-colors"
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {sidebarTab === 'juz' && juzsList
+
+
+              {sidebarTab === 'juz' && (
+                <div className="p-4">
+                  {juzsList
                 .filter(j => `juz ${j.juz_number}`.includes(searchQuery.toLowerCase()) || `${j.juz_number}`.includes(searchQuery))
                 .map((j) => (
                 <button
@@ -558,15 +578,36 @@ export default function SurahReader() {
                       navigate(`/quran/${firstSurah}#ayah=${firstAyah}`);
                     }
                   }}
-                  className="w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors mb-1"
-                >
-                  <span className="font-bold text-foreground">Juz {j.juz_number}</span>
-                  <span className="text-xs">Verses: {j.verses_count}</span>
-                </button>
-              ))}
+                    .filter(j => `juz ${j.juz_number}`.includes(searchQuery.toLowerCase()) || `${j.juz_number}`.includes(searchQuery))
+                    .map((j) => (
+                      <button
+                        key={j.id}
+                        onClick={() => {
+                          setIsSidebarOpen(false);
+                          const firstSurah = Object.keys(j.verse_mapping)[0];
+                          const firstAyah = j.verse_mapping[firstSurah].split('-')[0];
+                          if (parseInt(firstSurah) === num) {
+                            const el = document.querySelector(`[data-ayah-row="${firstAyah}"]`);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "center" });
+                              el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
+                              setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+                            }
+                          } else {
+                            navigate(`/quran/${firstSurah}#ayah=${firstAyah}`);
+                          }
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors mb-1"
+                      >
+                        <span className="font-bold text-foreground">Juz {j.juz_number}</span>
+                        <span className="text-xs">Verses: {j.verses_count}</span>
+                      </button>
+                    ))}
+                </div>
+              )}
 
               {sidebarTab === 'page' && (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="p-4 grid grid-cols-4 gap-2">
                   {Array.from({ length: 604 }, (_, i) => i + 1).map((p) => (
                     <button
                       key={p}
@@ -1238,7 +1279,7 @@ export default function SurahReader() {
                   {readingView === "arabic" ? (
                     <div dir="rtl" className={`font-arabic leading-[2.4] text-foreground max-w-4xl mx-auto transition-all duration-300 ${data.number === 1 ? 'text-center' : 'text-justify'}`} style={{ textJustify: data.number === 1 ? 'none' : 'inter-word', fontSize: getArabicFontSize() }}>
                       {pageAyahs.map(a => (
-                        <span key={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
+                        <span key={a.number} data-ayah-row={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
                           <span dangerouslySetInnerHTML={{ __html: arabicScript === 'tajweed' ? a.tajweed : (arabicScript === 'indopak' ? a.indopak : a.arabic) }} /> <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>{" "}
                         </span>
                       ))}
@@ -1252,7 +1293,7 @@ export default function SurahReader() {
                           {pageAyahs.map(a => {
                             const t = a.translations && a.translations.length > 0 ? a.translations[0] : { text: "No translation available." };
                             return (
-                              <span key={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
+                              <span key={a.number} data-ayah-row={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
                                 {isContainerRTL ? null : <span className="font-bold text-primary mr-1.5 opacity-70">[{a.number}]</span>}
                                 <span dangerouslySetInnerHTML={{ __html: t.text }} />
                                 {isContainerRTL ? <span className="font-bold text-primary ml-1.5 opacity-70 font-sans">[{a.number}]</span> : null}
