@@ -559,26 +559,7 @@ export default function SurahReader() {
               {sidebarTab === 'juz' && (
                 <div className="p-4">
                   {juzsList
-                .filter(j => `juz ${j.juz_number}`.includes(searchQuery.toLowerCase()) || `${j.juz_number}`.includes(searchQuery))
-                .map((j) => (
-                <button
-                  key={j.id}
-                  onClick={() => {
-                    setIsSidebarOpen(false);
-                    const firstSurah = Object.keys(j.verse_mapping)[0];
-                    const firstAyah = j.verse_mapping[firstSurah].split('-')[0];
-                    if (parseInt(firstSurah) === num) {
-                      const el = document.querySelector(`[data-ayah-row="${firstAyah}"]`);
-                      if (el) {
-                        el.scrollIntoView({ behavior: "smooth", block: "center" });
-                        el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
-                        setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
-                      }
-                    } else {
-                      navigate(`/quran/${firstSurah}#ayah=${firstAyah}`);
-                    }
-                  }}
-                    .filter(j => `juz ${j.juz_number}`.includes(searchQuery.toLowerCase()) || `${j.juz_number}`.includes(searchQuery))
+                    .filter(j => String(j.juz_number).includes(searchQuery))
                     .map((j) => (
                       <button
                         key={j.id}
@@ -590,7 +571,7 @@ export default function SurahReader() {
                             const el = document.querySelector(`[data-ayah-row="${firstAyah}"]`);
                             if (el) {
                               el.scrollIntoView({ behavior: "smooth", block: "center" });
-                              el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
+                              el.classList.add('bg-primary/10');
                               setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
                             }
                           } else {
@@ -602,7 +583,8 @@ export default function SurahReader() {
                         <span className="font-bold text-foreground">Juz {j.juz_number}</span>
                         <span className="text-xs">Verses: {j.verses_count}</span>
                       </button>
-                    ))}
+                    ))
+                  }
                 </div>
               )}
 
