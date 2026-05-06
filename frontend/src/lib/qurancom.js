@@ -10,7 +10,8 @@ export const qurancom = {
     name: c.name_arabic,
     englishName: c.name_simple,
     englishNameTranslation: c.translated_name.name,
-    revelationType: c.revelation_place === "makkah" ? "Meccan" : "Medinan"
+    revelationType: c.revelation_place === "makkah" ? "Meccan" : "Medinan",
+    numberOfAyahs: c.verses_count,
   }))),
 
   // Get chapter info
