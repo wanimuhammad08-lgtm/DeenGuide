@@ -499,12 +499,10 @@ export default function SurahReader() {
             </div>
             
             <div className="flex-1 overflow-y-auto scroll-thin">
-              {/* ── SURAH TAB: dual column (surah list + verse column) ── */}
-              {sidebarTab === 'surah' && (() => {
-                const activeSurah = navSurah ?? surahsList.find(s => s.number === num);
-                return (
+              {/* ── SURAH TAB: dual column (surah list + verse column for current surah) ── */}
+              {sidebarTab === 'surah' && (
                 <div className="flex" style={{ height: 'calc(100vh - 160px)' }}>
-                  {/* Left: Surah list */}
+                  {/* Left: Surah list — clicking navigates directly */}
                   <div className="flex-1 flex flex-col border-r border-border/40 min-w-0">
                     <div className="p-3 shrink-0">
                       <div className="relative">
@@ -522,50 +520,43 @@ export default function SurahReader() {
                       {surahsList
                         .filter(s => s.englishName.toLowerCase().includes(searchQuery.toLowerCase()) || String(s.number).includes(searchQuery))
                         .map((s) => (
-                          <button
+                          <Link
                             key={s.number}
-                            onClick={() => setNavSurah(s)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-colors text-left ${
-                              activeSurah?.number === s.number
+                            to={`/quran/${s.number}`}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                              s.number === num
                                 ? 'bg-[#178b50]/10 text-foreground border-l-2 border-[#178b50]'
                                 : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                             }`}
                           >
-                            <span className={`w-5 text-xs shrink-0 ${activeSurah?.number === s.number ? 'text-[#178b50] font-bold' : ''}`}>{s.number}</span>
+                            <span className={`w-5 text-xs shrink-0 ${s.number === num ? 'text-[#178b50] font-bold' : ''}`}>{s.number}</span>
                             <span className="truncate">{s.englishName}</span>
-                          </button>
+                          </Link>
                         ))
                       }
                     </div>
                   </div>
 
-                  {/* Right: Verse numbers for selected surah */}
+                  {/* Right: Verse numbers for CURRENT surah — clicking scrolls */}
                   <div className="w-[68px] shrink-0 flex flex-col">
                     <div className="p-2 shrink-0 bg-card border-b border-border/40 text-center">
                       <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Verse</span>
                     </div>
                     <div className="flex-1 overflow-y-auto">
-                      {activeSurah && Array.from(
-                        { length: activeSurah.number === num ? (data?.ayahs?.length ?? 0) : (activeSurah.numberOfAyahs ?? 0) },
-                        (_, i) => i + 1
-                      ).map((v) => (
+                      {data && Array.from({ length: data.ayahs.length }, (_, i) => i + 1).map((v) => (
                         <button
                           key={v}
                           onClick={() => {
-                            if (activeSurah.number === num) {
-                              setIsSidebarOpen(false);
-                              setTimeout(() => {
-                                const el = document.querySelector(`[data-ayah-row="${v}"]`);
-                                if (el) {
-                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  el.classList.add('bg-primary/10');
-                                  setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
-                                }
-                              }, 100);
-                            } else {
-                              setIsSidebarOpen(false);
-                              navigate(`/quran/${activeSurah.number}#ayah=${v}`);
-                            }
+                            setIsSidebarOpen(false);
+                            setTimeout(() => {
+                              const el = document.querySelector(`[data-ayah-row="${v}"]`);
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                el.classList.add('bg-primary/10');
+                                setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+                              }
+                            }, 100);
                           }}
                           className="w-full py-2 text-[13px] font-medium text-center text-muted-foreground hover:bg-[#178b50]/10 hover:text-[#178b50] transition-colors"
                         >
@@ -575,8 +566,7 @@ export default function SurahReader() {
                     </div>
                   </div>
                 </div>
-                );
-              })()}
+              )}
 
               {/* ── VERSE TAB: full-width number grid for current surah ── */}
               {sidebarTab === 'verse' && (() => {
