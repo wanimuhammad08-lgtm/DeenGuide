@@ -95,28 +95,27 @@ function QiblaCompass({ qiblaBearing, deviceHeading }) {
           {/* North triangle */}
           <polygon points="140,8 135,20 145,20" fill="#178b50" />
         </svg>
-      </div>
 
-      {/* Qibla needle (fixed rotation = qibla bearing, doesn't follow device heading) */}
-      {/* This is the KEY FIX: needle is separate from the rotating ring */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div style={{ transform: `rotate(${qiblaBearing}deg)`, transformOrigin: "center center", width: "100%", height: "100%", position: "absolute" }}>
-          <svg viewBox="0 0 280 280" width="280" height="280" style={{ position: "absolute", inset: 0 }}>
-            {/* Needle shaft */}
-            <line x1="140" y1="140" x2="140" y2="42"
-              stroke="#178b50" strokeWidth="3" strokeLinecap="round" />
-            {/* Needle head */}
-            <polygon points="140,28 133,48 147,48" fill="#178b50" />
-            {/* Tail */}
-            <line x1="140" y1="140" x2="140" y2="200"
-              stroke="hsl(var(--border))" strokeWidth="2" strokeLinecap="round" />
-            <polygon points="140,210 134,196 146,196" fill="hsl(var(--muted-foreground))" opacity="0.4" />
-            {/* Qibla label near head */}
-            <text x="140" y="62" textAnchor="middle"
-              fill="#178b50" fontSize="8" fontWeight="bold"
-              fontFamily="'Outfit', system-ui, sans-serif"
-            >QIBLA</text>
-          </svg>
+        {/* Qibla needle (attached to the rotating ring so it points to absolute Qibla) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div style={{ transform: `rotate(${qiblaBearing}deg)`, transformOrigin: "center center", width: "100%", height: "100%", position: "absolute" }}>
+            <svg viewBox="0 0 280 280" width="280" height="280" style={{ position: "absolute", inset: 0 }}>
+              {/* Needle shaft */}
+              <line x1="140" y1="140" x2="140" y2="42"
+                stroke="#178b50" strokeWidth="3" strokeLinecap="round" />
+              {/* Needle head */}
+              <polygon points="140,28 133,48 147,48" fill="#178b50" />
+              {/* Tail */}
+              <line x1="140" y1="140" x2="140" y2="200"
+                stroke="hsl(var(--border))" strokeWidth="2" strokeLinecap="round" />
+              <polygon points="140,210 134,196 146,196" fill="hsl(var(--muted-foreground))" opacity="0.4" />
+              {/* Qibla label near head */}
+              <text x="140" y="62" textAnchor="middle"
+                fill="#178b50" fontSize="8" fontWeight="bold"
+                fontFamily="'Outfit', system-ui, sans-serif"
+              >QIBLA</text>
+            </svg>
+          </div>
         </div>
       </div>
 
