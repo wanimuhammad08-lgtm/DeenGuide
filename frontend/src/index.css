@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri+Quran&family=DM+Sans:opsz,wght@9..40,400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 25% 98%;
+    --foreground: 153 67% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 153 67% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 153 67% 8%;
+    --primary: 183 59% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 60 20% 95%;
+    --secondary-foreground: 153 67% 8%;
+    --muted: 60 20% 93%;
+    --muted-foreground: 153 9% 36%;
+    --accent: 183 59% 95%;
+    --accent-foreground: 183 59% 42%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 60 15% 90%;
+    --input: 60 15% 90%;
+    --ring: 183 59% 42%;
+    --radius: 1rem;
+    --sahih-bg: 142 76% 95%;
+    --sahih-text: 142 72% 29%;
+    --hasan-bg: 45 100% 95%;
+    --hasan-text: 35 92% 33%;
+    --daif-bg: 0 100% 95%;
+    --daif-text: 0 72% 35%;
+  }
+
+  .dark {
+    --background: 153 31% 6%;
+    --foreground: 60 25% 96%;
+    --card: 153 30% 9%;
+    --card-foreground: 60 25% 96%;
+    --popover: 153 30% 9%;
+    --popover-foreground: 60 25% 96%;
+    --primary: 183 60% 45%;
+    --primary-foreground: 153 31% 6%;
+    --secondary: 153 30% 12%;
+    --secondary-foreground: 60 25% 96%;
+    --muted: 153 30% 14%;
+    --muted-foreground: 153 10% 65%;
+    --accent: 153 30% 16%;
+    --accent-foreground: 183 60% 45%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 153 30% 16%;
+    --input: 153 30% 16%;
+    --ring: 183 60% 45%;
+    --sahih-bg: 142 72% 15%;
+    --sahih-text: 142 76% 65%;
+    --hasan-bg: 35 92% 15%;
+    --hasan-text: 45 100% 65%;
+    --daif-bg: 0 72% 15%;
+    --daif-text: 0 100% 75%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', system-ui, sans-serif;
+  }
+  .font-arabic {
+    font-family: 'Amiri Quran', serif;
+  }
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
+    font-feature-settings: 'calt' 1, 'liga' 1;
+    line-height: 2.6;
+  }
+  .font-naskh {
+    font-family: 'Noto Naskh Arabic', 'Amiri', serif;
+  }
+  .font-heading {
+    font-family: 'Outfit', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .pattern-dots {
+    background-image: radial-gradient(hsl(var(--primary) / 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark .pattern-dots {
+    background-image: radial-gradient(hsl(var(--primary) / 0.12) 1px, transparent 1px);
+  }
+  .pattern-geometric {
+    background-image:
+      radial-gradient(circle at 1px 1px, hsl(var(--primary) / 0.06) 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 9999px;
+  }
+}
+
+@layer base {
+  [data-debug-wrapper="true"] {
+    display: contents !important;
+  }
+  [data-debug-wrapper="true"] > * {
+    margin-left: inherit; margin-right: inherit; margin-top: inherit; margin-bottom: inherit;
+    padding-left: inherit; padding-right: inherit; padding-top: inherit; padding-bottom: inherit;
+    column-gap: inherit; row-gap: inherit; gap: inherit;
+    border-left-width: inherit; border-right-width: inherit; border-top-width: inherit; border-bottom-width: inherit;
+    border-left-style: inherit; border-right-style: inherit; border-top-style: inherit; border-bottom-style: inherit;
+    border-left-color: inherit; border-right-color: inherit; border-top-color: inherit; border-bottom-color: inherit;
+  }
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+}
+
+/* Tajweed Colors */
+tajweed.ham_wasl, rule.ham_wasl, tajweed.slnt, rule.slnt, tajweed.laam_shamsiyah, rule.laam_shamsiyah, tajweed.idgham_without_ghunnah, rule.idgham_without_ghunnah {
+  color: #999999; /* Silent / Gray */
+}
+tajweed.madda_normal, rule.madda_normal {
+  color: #F8BBE0; /* Normal madd / Light Pink */
+}
+tajweed.madda_permissible, rule.madda_permissible, tajweed.madda_obli, rule.madda_obli {
+  color: #F68B25; /* Separated madd / Orange */
+}
+tajweed.madda_necessory, rule.madda_necessory {
+  color: #E83335; /* Necessary madd / Red */
+}
+tajweed.ghunnah, rule.ghunnah, tajweed.ikhafa, rule.ikhafa, tajweed.ikhafa_shafawi, rule.ikhafa_shafawi, tajweed.idgham_with_ghunnah, rule.idgham_with_ghunnah, tajweed.iqlab, rule.iqlab {
+  color: #22C55E; /* Ghunna / Ikhfa / Green */
+}
+tajweed.qalaqah, rule.qalaqah {
+  color: #06B6D4; /* Qalqala / Cyan */
+}
+tajweed.tafkheem, rule.tafkheem {
+  color: #3B82F6; /* Tafkhim / Blue */
+}

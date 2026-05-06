@@ -1,0 +1,254 @@
+{
+  "collections": [
+    { "slug": "bukhari", "name": "Sahih al-Bukhari", "compiler": "Imam al-Bukhari" },
+    { "slug": "muslim", "name": "Sahih Muslim", "compiler": "Imam Muslim" },
+    { "slug": "abudawood", "name": "Sunan Abu Dawood", "compiler": "Imam Abu Dawood" },
+    { "slug": "tirmidhi", "name": "Jami` at-Tirmidhi", "compiler": "Imam at-Tirmidhi" },
+    { "slug": "nasai", "name": "Sunan an-Nasa'i", "compiler": "Imam an-Nasa'i" },
+    { "slug": "ibnmajah", "name": "Sunan Ibn Majah", "compiler": "Imam Ibn Majah" },
+    { "slug": "muwatta", "name": "Muwatta Imam Malik", "compiler": "Imam Malik" },
+    { "slug": "ahmad", "name": "Musnad Ahmad", "compiler": "Imam Ahmad ibn Hanbal" }
+  ],
+  "hadiths": [
+    {
+      "id": "h-001", "collection": "bukhari", "number": "1",
+      "narrator": "Umar ibn al-Khattab",
+      "arabic": "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى",
+      "english": "Actions are but by intentions, and every man shall have only that which he intended.",
+      "topics": ["intention", "niyyah", "deeds", "actions"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-002", "collection": "bukhari", "number": "8",
+      "narrator": "Ibn Umar",
+      "arabic": "بُنِيَ الْإِسْلَامُ عَلَى خَمْسٍ: شَهَادَةِ أَنْ لَا إِلَهَ إِلَّا اللَّهُ، وَإِقَامِ الصَّلَاةِ، وَإِيتَاءِ الزَّكَاةِ، وَالْحَجِّ، وَصَوْمِ رَمَضَانَ",
+      "english": "Islam is built upon five: testifying that there is no god but Allah and that Muhammad is His Messenger, establishing prayer, paying zakat, performing Hajj, and fasting in Ramadan.",
+      "topics": ["five pillars", "islam", "prayer", "zakat", "hajj", "fasting"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-003", "collection": "muslim", "number": "8",
+      "narrator": "Umar ibn al-Khattab",
+      "arabic": "أَنْ تَعْبُدَ اللَّهَ كَأَنَّكَ تَرَاهُ، فَإِنْ لَمْ تَكُنْ تَرَاهُ فَإِنَّهُ يَرَاكَ",
+      "english": "Ihsan is to worship Allah as though you see Him, and if you cannot see Him, then He certainly sees you.",
+      "topics": ["ihsan", "worship", "tawhid", "iman"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-004", "collection": "bukhari", "number": "13",
+      "narrator": "Anas ibn Malik",
+      "arabic": "لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ",
+      "english": "None of you truly believes until he loves for his brother what he loves for himself.",
+      "topics": ["brotherhood", "love", "iman", "character"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-005", "collection": "bukhari", "number": "10",
+      "narrator": "Abdullah ibn Amr",
+      "arabic": "الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ",
+      "english": "The Muslim is the one from whose tongue and hand the Muslims are safe.",
+      "topics": ["character", "muslim", "safety", "speech"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-006", "collection": "tirmidhi", "number": "1924",
+      "narrator": "Abu Hurairah",
+      "arabic": "لَيْسَ مِنَّا مَنْ لَمْ يَرْحَمْ صَغِيرَنَا وَيُوَقِّرْ كَبِيرَنَا",
+      "english": "He is not one of us who does not show mercy to our young and respect to our elders.",
+      "topics": ["mercy", "elders", "youth", "respect"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-007", "collection": "muslim", "number": "2564",
+      "narrator": "Abu Hurairah",
+      "arabic": "إِنَّ اللَّهَ لَا يَنْظُرُ إِلَى أَجْسَامِكُمْ وَلَا إِلَى صُوَرِكُمْ، وَلَكِنْ يَنْظُرُ إِلَى قُلُوبِكُمْ وَأَعْمَالِكُمْ",
+      "english": "Verily, Allah does not look at your appearance or wealth, but rather He looks at your hearts and actions.",
+      "topics": ["heart", "sincerity", "intention", "deeds"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-008", "collection": "bukhari", "number": "6094",
+      "narrator": "Abdullah ibn Mas'ud",
+      "arabic": "عَلَيْكُمْ بِالصِّدْقِ، فَإِنَّ الصِّدْقَ يَهْدِي إِلَى الْبِرِّ، وَإِنَّ الْبِرَّ يَهْدِي إِلَى الْجَنَّةِ",
+      "english": "Truthfulness leads to righteousness, and righteousness leads to Paradise.",
+      "topics": ["truth", "honesty", "paradise", "character"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-009", "collection": "bukhari", "number": "5063",
+      "narrator": "Anas ibn Malik",
+      "arabic": "النِّكَاحُ مِنْ سُنَّتِي، فَمَنْ لَمْ يَعْمَلْ بِسُنَّتِي فَلَيْسَ مِنِّي",
+      "english": "Marriage is part of my Sunnah, and whoever does not follow my Sunnah is not of me.",
+      "topics": ["marriage", "sunnah", "family"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-010", "collection": "muslim", "number": "2699",
+      "narrator": "Abu Hurairah",
+      "arabic": "مَنْ نَفَّسَ عَنْ مُؤْمِنٍ كُرْبَةً مِنْ كُرَبِ الدُّنْيَا، نَفَّسَ اللَّهُ عَنْهُ كُرْبَةً مِنْ كُرَبِ يَوْمِ الْقِيَامَةِ",
+      "english": "Whoever relieves a believer's distress in this world, Allah will relieve his distress on the Day of Resurrection.",
+      "topics": ["help", "compassion", "afterlife", "charity"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-011", "collection": "bukhari", "number": "1410",
+      "narrator": "Abu Hurairah",
+      "arabic": "مَا نَقَصَتْ صَدَقَةٌ مِنْ مَالٍ",
+      "english": "Charity does not decrease wealth.",
+      "topics": ["charity", "sadaqah", "wealth", "rizq"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-012", "collection": "bukhari", "number": "5970",
+      "narrator": "Abu Hurairah",
+      "arabic": "رَغِمَ أَنْفُ، ثُمَّ رَغِمَ أَنْفُ، ثُمَّ رَغِمَ أَنْفُ مَنْ أَدْرَكَ أَبَوَيْهِ عِنْدَ الْكِبَرِ، أَحَدَهُمَا أَوْ كِلَيْهِمَا، فَلَمْ يَدْخُلِ الْجَنَّةَ",
+      "english": "May he be humbled — he who finds his parents in old age, one or both of them, and does not enter Paradise.",
+      "topics": ["parents", "family", "paradise"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-013", "collection": "tirmidhi", "number": "1987",
+      "narrator": "Abu Dharr",
+      "arabic": "اتَّقِ اللَّهَ حَيْثُمَا كُنْتَ، وَأَتْبِعِ السَّيِّئَةَ الْحَسَنَةَ تَمْحُهَا، وَخَالِقِ النَّاسَ بِخُلُقٍ حَسَنٍ",
+      "english": "Fear Allah wherever you are, follow up a bad deed with a good one to wipe it out, and treat people with good character.",
+      "topics": ["taqwa", "character", "repentance"],
+      "authenticity": "Hasan"
+    },
+    {
+      "id": "h-014", "collection": "bukhari", "number": "6502",
+      "narrator": "Abu Hurairah",
+      "arabic": "إِنَّ اللَّهَ قَالَ: مَنْ عَادَى لِي وَلِيًّا فَقَدْ آذَنْتُهُ بِالْحَرْبِ",
+      "english": "Allah said: Whoever shows enmity to a friend of Mine, I declare war upon him.",
+      "topics": ["awliya", "love of allah", "ibadah"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-015", "collection": "muslim", "number": "223",
+      "narrator": "Abu Malik al-Ash'ari",
+      "arabic": "الطُّهُورُ شَطْرُ الْإِيمَانِ",
+      "english": "Cleanliness is half of faith.",
+      "topics": ["purity", "wudu", "iman"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-016", "collection": "bukhari", "number": "527",
+      "narrator": "Ibn Mas'ud",
+      "arabic": "أَيُّ الْعَمَلِ أَحَبُّ إِلَى اللَّهِ؟ قَالَ: الصَّلَاةُ عَلَى وَقْتِهَا",
+      "english": "I asked the Prophet ﷺ which deed is most beloved to Allah. He said: Prayer at its proper time.",
+      "topics": ["prayer", "salah", "deeds", "time"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-017", "collection": "abudawood", "number": "1731",
+      "narrator": "Abu Hurairah",
+      "arabic": "الْمُسَافِرُ وَمَالُهُ عَلَى قَلَتٍ إِلَّا مَا وَقَى اللَّهُ",
+      "english": "The traveler and his wealth are at risk except for what Allah protects.",
+      "topics": ["travel", "protection", "tawakkul"],
+      "authenticity": "Hasan"
+    },
+    {
+      "id": "h-018", "collection": "muslim", "number": "1631",
+      "narrator": "Abu Hurairah",
+      "arabic": "إِذَا مَاتَ الْإِنْسَانُ انْقَطَعَ عَنْهُ عَمَلُهُ إِلَّا مِنْ ثَلَاثَةٍ: صَدَقَةٍ جَارِيَةٍ، أَوْ عِلْمٍ يُنْتَفَعُ بِهِ، أَوْ وَلَدٍ صَالِحٍ يَدْعُو لَهُ",
+      "english": "When a person dies, his deeds cease except for three: a continuing charity, beneficial knowledge, or a righteous child who prays for him.",
+      "topics": ["death", "sadaqah jariyah", "knowledge", "legacy"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-019", "collection": "tirmidhi", "number": "2517",
+      "narrator": "Hasan ibn Ali",
+      "arabic": "دَعْ مَا يَرِيبُكَ إِلَى مَا لَا يَرِيبُكَ",
+      "english": "Leave what makes you doubt for what does not make you doubt.",
+      "topics": ["doubt", "wara", "halal", "haram"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-020", "collection": "bukhari", "number": "39",
+      "narrator": "Abu Hurairah",
+      "arabic": "إِنَّ الدِّينَ يُسْرٌ، وَلَنْ يُشَادَّ الدِّينَ أَحَدٌ إِلَّا غَلَبَهُ",
+      "english": "Religion is ease, and whoever makes the religion too hard upon himself will be overwhelmed by it.",
+      "topics": ["ease", "moderation", "religion"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-021", "collection": "ibnmajah", "number": "224",
+      "narrator": "Anas ibn Malik",
+      "arabic": "طَلَبُ الْعِلْمِ فَرِيضَةٌ عَلَى كُلِّ مُسْلِمٍ",
+      "english": "Seeking knowledge is an obligation upon every Muslim.",
+      "topics": ["knowledge", "learning", "education"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-022", "collection": "muslim", "number": "2865",
+      "narrator": "Iyad ibn Himar",
+      "arabic": "إِنَّ اللَّهَ أَوْحَى إِلَيَّ أَنْ تَوَاضَعُوا حَتَّى لَا يَفْخَرَ أَحَدٌ عَلَى أَحَدٍ",
+      "english": "Allah has revealed to me that you should be humble, so that no one wrongs another or boasts over another.",
+      "topics": ["humility", "character", "pride"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-023", "collection": "bukhari", "number": "660",
+      "narrator": "Abu Hurairah",
+      "arabic": "سَبْعَةٌ يُظِلُّهُمُ اللَّهُ فِي ظِلِّهِ يَوْمَ لَا ظِلَّ إِلَّا ظِلُّهُ: إِمَامٌ عَادِلٌ، وَشَابٌّ نَشَأَ فِي عِبَادَةِ اللَّهِ",
+      "english": "Seven are those whom Allah will shade on the Day when there is no shade but His: a just ruler, a youth who grew up in the worship of Allah...",
+      "topics": ["paradise", "shade", "youth", "justice"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-024", "collection": "nasai", "number": "3940",
+      "narrator": "Anas ibn Malik",
+      "arabic": "حُبِّبَ إِلَيَّ مِنْ دُنْيَاكُمُ النِّسَاءُ وَالطِّيبُ، وَجُعِلَتْ قُرَّةُ عَيْنِي فِي الصَّلَاةِ",
+      "english": "Made beloved to me from your world are women and perfume, and the comfort of my eyes has been placed in prayer.",
+      "topics": ["prayer", "marriage", "salah"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-025", "collection": "muwatta", "number": "1614",
+      "narrator": "Malik",
+      "arabic": "بُعِثْتُ لِأُتَمِّمَ مَكَارِمَ الْأَخْلَاقِ",
+      "english": "I have been sent only to perfect noble character.",
+      "topics": ["character", "akhlaq", "prophet", "mission"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-026", "collection": "ahmad", "number": "8952",
+      "narrator": "Abu Hurairah",
+      "arabic": "إِنَّ مِنْ خِيَارِكُمْ أَحْسَنَكُمْ أَخْلَاقًا",
+      "english": "The best among you are those who have the best character.",
+      "topics": ["character", "akhlaq", "best"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-027", "collection": "bukhari", "number": "6018",
+      "narrator": "Abu Hurairah",
+      "arabic": "مَنْ كَانَ يُؤْمِنُ بِاللَّهِ وَالْيَوْمِ الْآخِرِ فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ",
+      "english": "Whoever believes in Allah and the Last Day should speak good or remain silent.",
+      "topics": ["speech", "iman", "silence", "character"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-028", "collection": "muslim", "number": "2807",
+      "narrator": "Anas ibn Malik",
+      "arabic": "لَا يَتَمَنَّيَنَّ أَحَدُكُمُ الْمَوْتَ مِنْ ضُرٍّ أَصَابَهُ",
+      "english": "Let none of you wish for death because of a hardship that has befallen him.",
+      "topics": ["patience", "trial", "hardship"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-029", "collection": "bukhari", "number": "5641",
+      "narrator": "Abu Sa'id and Abu Hurairah",
+      "arabic": "مَا يُصِيبُ الْمُسْلِمَ مِنْ نَصَبٍ وَلَا وَصَبٍ وَلَا هَمٍّ وَلَا حُزْنٍ إِلَّا كَفَّرَ اللَّهُ بِهَا مِنْ خَطَايَاهُ",
+      "english": "No fatigue, illness, anxiety, or sorrow afflicts a Muslim except that Allah expiates by it some of his sins.",
+      "topics": ["trial", "illness", "patience", "expiation"],
+      "authenticity": "Sahih"
+    },
+    {
+      "id": "h-030", "collection": "tirmidhi", "number": "2516",
+      "narrator": "Ibn Abbas",
+      "arabic": "احْفَظِ اللَّهَ يَحْفَظْكَ، احْفَظِ اللَّهَ تَجِدْهُ تُجَاهَكَ",
+      "english": "Be mindful of Allah and He will protect you. Be mindful of Allah and you will find Him before you.",
+      "topics": ["tawakkul", "protection", "remembrance"],
+      "authenticity": "Hasan"
+    }
+  ]
+}
