@@ -136,25 +136,71 @@
   color: hsl(var(--primary));
 }
 
-/* Tajweed Colors */
-tajweed.ham_wasl, rule.ham_wasl, tajweed.slnt, rule.slnt, tajweed.laam_shamsiyah, rule.laam_shamsiyah, tajweed.idgham_without_ghunnah, rule.idgham_without_ghunnah {
-  color: #999999; /* Silent / Gray */
+/* ─── Tajweed Colors (Quran.com API v4 — actual format) ─────────────────── */
+/* API outputs: <rule class=madda_necessary>...</rule>, no quotes on class    */
+
+/* Silent / Hamza Wasl / Lam Shamsiyya — gray */
+rule.ham_wasl, rule.slnt, rule.laam_shamsiyah,
+rule.idgham_without_ghunnah, rule.meem_saakin,
+[class~="ham_wasl"], [class~="slnt"], [class~="laam_shamsiyah"] {
+  color: #aaaaaa;
 }
-tajweed.madda_normal, rule.madda_normal {
-  color: #F8BBE0; /* Normal madd / Light Pink */
+
+/* Necessary Madd (ألٓمٓ) — red */
+rule.madda_necessary, rule.madda_necessory,
+[class~="madda_necessary"], [class~="madda_necessory"] {
+  color: #E83335;
 }
-tajweed.madda_permissible, rule.madda_permissible, tajweed.madda_obli, rule.madda_obli {
-  color: #F68B25; /* Separated madd / Orange */
+
+/* Normal Madd — light blue */
+rule.madda_normal, [class~="madda_normal"] {
+  color: #90CAF9;
 }
-tajweed.madda_necessory, rule.madda_necessory {
-  color: #E83335; /* Necessary madd / Red */
+
+/* Permissible / Obligatory Madd — orange */
+rule.madda_permissible, rule.madda_obli,
+[class~="madda_permissible"], [class~="madda_obli"] {
+  color: #F68B25;
 }
-tajweed.ghunnah, rule.ghunnah, tajweed.ikhafa, rule.ikhafa, tajweed.ikhafa_shafawi, rule.ikhafa_shafawi, tajweed.idgham_with_ghunnah, rule.idgham_with_ghunnah, tajweed.iqlab, rule.iqlab {
-  color: #22C55E; /* Ghunna / Ikhfa / Green */
+
+/* Ghunna / Ikhfa / Idgham with Ghunna / Iqlab — green */
+rule.ghunnah, rule.ikhf, rule.ikhf_shfwi, rule.ikhafa,
+rule.ikhafa_shafawi, rule.idgham_with_ghunnah,
+rule.idgham_ghunnah, rule.iqlab, rule.ghn,
+[class~="ghunnah"], [class~="ikhf"], [class~="iqlab"],
+[class~="idgham_ghunnah"], [class~="idgham_with_ghunnah"] {
+  color: #4ADE80;
 }
-tajweed.qalaqah, rule.qalaqah {
-  color: #06B6D4; /* Qalqala / Cyan */
+
+/* Qalqala — cyan */
+rule.qalaqah, rule.qalqalah,
+[class~="qalaqah"], [class~="qalqalah"] {
+  color: #22D3EE;
 }
-tajweed.tafkheem, rule.tafkheem {
-  color: #3B82F6; /* Tafkhim / Blue */
+
+/* Tafkhim (Heavy letters) — blue */
+rule.tafkheem, [class~="tafkheem"] {
+  color: #60A5FA;
 }
+
+/* Idgham Shafawi / Izhar — teal */
+rule.idgham_shafawi, rule.izhar, rule.izhar_shafawi,
+[class~="izhar"], [class~="idgham_shafawi"] {
+  color: #2DD4BF;
+}
+
+/* Also target via class-contains for robustness */
+[class*="madda_nec"]   { color: #E83335 !important; }
+[class*="madda_nor"]   { color: #90CAF9 !important; }
+[class*="madda_per"],
+[class*="madda_obl"]   { color: #F68B25 !important; }
+[class*="ghunnah"],
+[class*="ikhf"],
+[class*="iqlab"],
+[class*="idgham_g"]    { color: #4ADE80 !important; }
+[class*="qalaq"]       { color: #22D3EE !important; }
+[class*="tafkh"]       { color: #60A5FA !important; }
+[class*="izhar"]       { color: #2DD4BF !important; }
+[class*="ham_wasl"],
+[class*="laam_sh"],
+[class*="slnt"]        { color: #aaaaaa !important; }

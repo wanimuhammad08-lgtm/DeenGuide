@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 import requests
 
-from google import genai
+from groq import Groq
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -51,8 +51,8 @@ app.add_middleware(SlowAPIMiddleware)
 
 api = APIRouter(prefix="/api")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 ALQURAN_BASE = "https://api.alquran.cloud/v1"
 HADITH_CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions"
 TAFSIR_CDN = "https://cdn.jsdelivr.net/gh/spa5k/tafsir_api@main/tafsir"
@@ -266,6 +266,7 @@ class AskResponse(BaseModel):
     id: str
     question: str
     answer: str
+    detailed_answer: Optional[str] = None
     explanation: str
     quran_refs: List[QuranRef] = []
     hadith_refs: List[HadithRef] = []
@@ -449,45 +450,53 @@ def retrieve_duas(question: str, limit: int = 3) -> List[Dict[str, Any]]:
     return [d for _, d in scored[:limit]]
 
 
-SYSTEM_PROMPT = """You are an Islamic AI assistant for a platform called DeenGuide.
+SYSTEM_PROMPT = """You are DeenGuide AI, an empathetic, highly knowledgeable Islamic scholar following the orthodox Ahl al-Sunnah wal Jama'ah.
 
-Your purpose is to provide accurate, authentic, and well-referenced answers based STRICTLY on the Qur'an and authentic Hadith.
+STYLE & TONE:
+- You must EXACTLY match the tone, depth, and structure of "MuslimGPT".
+- Start with a warm, empathetic greeting (e.g., "My dear friend," or "Assalamu Alaikum!").
+- Write a beautiful, flowing narrative essay. Do NOT write like a robot. Write like a compassionate scholar explaining a deep concept.
+- Break your response into well-structured paragraphs. YOU MUST USE DOUBLE NEWLINES (\n\n) BETWEEN PARAGRAPHS.
+- Address the Wisdom (Hikmah) behind the ruling.
+- Do NOT water down Islamic rulings. State the orthodox Sunni consensus firmly but empathetically (e.g., if a Sahih hadith states someone is in the fire, you must state it, while explaining Allah's absolute justice).
 
-CORE RULES (MANDATORY)
-1. ALWAYS answer using:
-   - Qur'an (Surah name + Ayah number)
-   - Authentic Hadith (Book name + Hadith number)
-2. NEVER invent or guess any Qur'an verse or Hadith. NEVER provide unverified references. NEVER misquote.
-3. For HADITH citations, you MUST ONLY use hadith IDs from the HADITH LIBRARY in the user's message (e.g., bukhari-1). Do NOT invent collection numbers. Pick the most relevant 2-5 IDs.
-4. If a DIRECT reference exists -> set evidence_type="Direct Text Evidence" and provide it.
-5. If NO direct reference exists -> set notice="No direct reference found. The following is guidance based on related Qur'an verses, Hadith, and general Islamic principles." AND set evidence_type="Derived from Principles". Provide closest related Qur'an + Hadith with explanation of how they relate.
-6. scholarly_notes is MANDATORY for EVERY answer. Always provide 2-4 sentences (minimum ~30 words) describing what classical and contemporary scholars say about this topic — mention the four Sunni madhahib (Hanafi, Maliki, Shafi'i, Hanbali) when they differ, and cite key scholars (e.g., Ibn Taymiyyah, Ibn al-Qayyim, Ibn Kathir, An-Nawawi, Al-Qurtubi, Ibn Baz, Al-Albani, Uthaymeen). If there is scholarly consensus (ijma), state that explicitly with evidence. If a view is weak/minority, say so. Never leave scholarly_notes empty or null.
-7. Prefer sources from Sahih al-Bukhari, Sahih Muslim, Sunan Abu Dawood, Jami at-Tirmidhi, Sunan an-Nasa'i, Sunan Ibn Majah, Muwatta Imam Malik, Musnad Ahmad.
-8. Maintain a respectful, neutral, scholarly tone. If uncertain, say "Allah knows best" inside the explanation.
+CORE RULES (MANDATORY):
+1. Every answer MUST be grounded strictly in the Qur'an and authentic Sunnah.
+2. For hadiths: You are provided a HADITH LIBRARY context. HOWEVER, if those hadiths are weak or do not directly answer the question, YOU MUST IGNORE THEM. 
+3. Instead, use your own internal knowledge to cite the most famous, direct, and relevant hadiths from Sahih al-Bukhari or Sahih Muslim. Provide the exact text yourself using the `custom_hadiths` array. 
+4. quran_refs: Include max 1-2 relevant verses.
 
-ALWAYS respond in this STRICT JSON schema (no markdown fence, no extra text):
+ALWAYS respond with ONLY this JSON:
 {
-  "answer": "<clear, direct answer in 2-4 sentences>",
-  "explanation": "<simple explanation in easy language, 4-7 sentences. End with 'Allah knows best.' if there is any uncertainty.>",
+  "detailed_answer": "<The full, beautifully written, empathetic essay (4-6 paragraphs, separated by \\n\\n). Include greeting, the orthodox ruling, the wisdom/context, and conclusion.>",
   "quran_refs": [
-    {"surah": <int>, "surah_name": "<English name>", "ayah": <int>, "arabic": "<arabic verse>", "translation": "<English translation>"}
+    {
+      "surah": <int>,
+      "surah_name": "<English name>",
+      "ayah": <int>,
+      "arabic": "<arabic verse>",
+      "translation": "<English translation>"
+    }
   ],
-  "cite_hadith_ids": ["bukhari-1", "muslim-8"],
-  "evidence_type": "Direct Text Evidence" or "Derived from Principles",
-  "scholarly_notes": "<REQUIRED. 2-4 sentences. Classical + contemporary scholarly views, madhhab positions where relevant, ijma/ikhtilaf, naming scholars (e.g., Ibn Taymiyyah, An-Nawawi, Ibn Baz). Never leave empty or null.>",
-  "notice": "<optional. The exact phrase if no direct reference exists, else null>",
-  "related_duas": ["<short title or theme>", "..."]
+  "custom_hadiths": [
+    {
+      "collection": "Sahih Muslim",
+      "number": "203",
+      "english": "<The full english translation of the hadith>",
+      "authenticity": "Sahih"
+    }
+  ],
+  "evidence_type": "Direct Text Evidence",
+  "related_duas": ["<short title>"]
 }
-
-TONE: respectful, gentle, scholarly. Use 'ﷺ' after the Prophet's name where appropriate. Avoid sectarian polemics — stay rooted in mainstream Sunni orthodoxy. If the question is non-Islamic / inappropriate, gently redirect to Islamic guidance.
 """
 
 
 async def generate_answer(question: str, mode: str, session_id: str, context: str) -> Dict[str, Any]:
-    if not gemini_client:
-        raise RuntimeError("Gemini API key not configured")
+    if not groq_client:
+        raise RuntimeError("Groq API key not configured")
 
-    depth_note = "Provide a deep, thorough explanation." if mode == "deep" else "Provide a simple, beginner-friendly explanation."
+    depth_note = "Be thorough and scholarly." if mode == "deep" else "Be simple and beginner-friendly."
 
     user_text = f"""USER QUESTION: {question}
 
@@ -496,30 +505,30 @@ EXPLANATION DEPTH: {depth_note}
 RELEVANT CONTEXT (use what fits, ignore the rest):
 {context}
 
-Respond ONLY with the JSON object as instructed."""
+Respond ONLY with the JSON object as instructed. No markdown fences."""
 
     response = await asyncio.to_thread(
-        gemini_client.models.generate_content,
-        model="gemini-2.5-flash",
-        contents=user_text,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=4096,
-        ),
+        groq_client.chat.completions.create,
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_text},
+        ],
+        temperature=0.3,
+        max_tokens=1200,
+        response_format={"type": "json_object"},
     )
 
-    response_text = response.text
+    response_text = response.choices[0].message.content
 
     # Try to extract JSON
     cleaned = response_text.strip()
-    # strip possible markdown fences
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
 
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError:
-        # find first { ... last }
         m = re.search(r"\{.*\}", cleaned, re.DOTALL)
         if not m:
             raise HTTPException(status_code=502, detail="AI returned non-JSON output")
@@ -528,19 +537,16 @@ Respond ONLY with the JSON object as instructed."""
 
 
 async def generate_scholarly_notes(question: str, answer: str, explanation: str, session_id: str) -> str:
-    """Force a short, dedicated scholarly-notes completion when the main model left it empty."""
-    if not gemini_client:
-        raise RuntimeError("Gemini API key not configured")
+    """Short scholarly-notes completion when the main model left it empty."""
+    if not groq_client:
+        raise RuntimeError("Groq API key not configured")
 
     system_msg = (
-        "You are an Islamic scholarship summarizer. Given a question and a preliminary "
-        "answer, output ONLY a plain paragraph (2-4 sentences, ~40-80 words) describing "
-        "the scholarly landscape: mention the four Sunni madhahib (Hanafi, Maliki, "
-        "Shafi'i, Hanbali) where they differ, note classical authorities (Ibn Taymiyyah, "
-        "Ibn al-Qayyim, Ibn Kathir, An-Nawawi, Al-Qurtubi) and contemporary scholars "
-        "(Ibn Baz, Al-Albani, Uthaymeen) where relevant, and state whether there is "
-        "ijma (consensus) or ikhtilaf (difference). Do not use JSON. Do not add "
-        "greetings or disclaimers. End with 'Allah knows best.' if uncertainty exists."
+        "You are an Islamic scholarship summarizer. Output ONLY a plain paragraph "
+        "(2-3 sentences, ~40-60 words) describing the scholarly landscape: mention "
+        "the four Sunni madhahib (Hanafi, Maliki, Shafi'i, Hanbali) where they differ, "
+        "note key scholars (Ibn Taymiyyah, An-Nawawi, Ibn Baz, Al-Albani). "
+        "No JSON. No greetings. End with 'Allah knows best.' if uncertainty exists."
     )
 
     user_text = (
@@ -551,17 +557,17 @@ async def generate_scholarly_notes(question: str, answer: str, explanation: str,
     )
 
     response = await asyncio.to_thread(
-        gemini_client.models.generate_content,
-        model="gemini-2.5-flash",
-        contents=user_text,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=system_msg,
-            max_output_tokens=1024,
-        ),
+        groq_client.chat.completions.create,
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_text},
+        ],
+        temperature=0.3,
+        max_tokens=300,
     )
 
-    text = response.text.strip()
-    # Strip accidental markdown/json
+    text = response.choices[0].message.content.strip()
     text = re.sub(r"^```[a-z]*\s*|\s*```$", "", text)
     text = text.strip('"').strip()
     return text
@@ -626,72 +632,35 @@ async def ai_ask(req: AskRequest):
             "related_duas": [d["title"] for d in duas[:3]],
         }
 
-    # Hydrate hadith_refs from cite_hadith_ids using our actual corpus (no hallucination possible)
-    cite_ids = data.get("cite_hadith_ids") or []
-    hadith_refs = hydrate_hadith_refs(cite_ids)
-    # If AI returned legacy hadith_refs (fallback), accept them too — but only for ones we can't hydrate
-    if not hadith_refs and isinstance(data.get("hadith_refs"), list):
-        for h in data["hadith_refs"][:5]:
-            try:
-                hadith_refs.append(h)
-            except Exception:
-                pass
-    # Always merge top RAG hits so the user sees related hadiths from the
-    # authentic corpus — even if the AI chose to cite fewer or none.
-    if rag_hits:
-        existing_keys = {(r.get("collection"), str(r.get("number"))) for r in hadith_refs}
-        for h in rag_hits[:5]:
-            key = (h["collection"], str(h["number"]))
-            if key in existing_keys:
-                continue
-            hadith_refs.append({
-                "collection": h["collection"],
-                "number": str(h["number"]),
-                "narrator": h.get("narrator") or "",
-                "arabic": h.get("arabic") or "",
-                "english": h.get("english") or "",
-                "authenticity": _hadith_authenticity(h["collection"]),
-            })
-            existing_keys.add(key)
-            if len(hadith_refs) >= 6:
-                break
+    # Hydrate custom hadiths provided by the AI (bypasses numbering mismatches)
+    custom_hadiths = data.get("custom_hadiths") or []
+    hadith_refs = []
+    for ch in custom_hadiths:
+        hadith_refs.append({
+            "collection": ch.get("collection", ""),
+            "number": ch.get("number", ""),
+            "narrator": ch.get("narrator", ""),
+            "arabic": ch.get("arabic", ""),
+            "english": ch.get("english", ""),
+            "authenticity": ch.get("authenticity", "Sahih")
+        })
 
-    # Ensure scholarly_notes is always present. If the model left it empty/null
-    # or made it too short, do a one-shot targeted completion to fill it.
-    scholarly_notes = (data.get("scholarly_notes") or "").strip()
-    if len(scholarly_notes) < 40:
-        try:
-            scholarly_notes = await generate_scholarly_notes(
-                req.question,
-                data.get("answer", ""),
-                data.get("explanation", ""),
-                session_id,
-            )
-        except Exception:
-            logging.exception("scholarly_notes fallback failed")
-            if not scholarly_notes:
-                scholarly_notes = (
-                    "Classical and contemporary scholars across the four Sunni madhahib "
-                    "(Hanafi, Maliki, Shafi'i, Hanbali) have discussed this matter based "
-                    "on the Qur'an, authentic Sunnah, and the principles of fiqh. Where a "
-                    "clear text applies, there is consensus; where texts admit multiple "
-                    "understandings, scholars have differed. Muslims are encouraged to "
-                    "consult a qualified local scholar for their specific situation. "
-                    "Allah knows best."
-                )
+    # Only show hadiths the AI explicitly chose — no forced RAG merge
+    hadith_refs = hadith_refs[:3]  # cap at 3 max
 
     record_id = str(uuid.uuid4())
     response = AskResponse(
         id=record_id,
         question=req.question,
         answer=data.get("answer", ""),
+        detailed_answer=data.get("detailed_answer"),
         explanation=data.get("explanation", ""),
         quran_refs=[QuranRef(**q) for q in data.get("quran_refs", []) if q],
         hadith_refs=[HadithRef(**h) for h in hadith_refs if h],
         notice=data.get("notice"),
         related_duas=data.get("related_duas", []) or [],
         evidence_type=data.get("evidence_type"),
-        scholarly_notes=scholarly_notes,
+        scholarly_notes=data.get("scholarly_notes"),
         created_at=datetime.now(timezone.utc).isoformat(),
     )
 

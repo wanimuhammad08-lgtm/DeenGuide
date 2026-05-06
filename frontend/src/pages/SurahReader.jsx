@@ -41,6 +41,7 @@ export default function SurahReader() {
   const [sidebarTab, setSidebarTab] = useState("surah"); // 'surah', 'verse', 'juz', 'page'
   const [juzsList, setJuzsList] = useState([]);
   const [navSurah, setNavSurah] = useState(null); // selected surah in sidebar for navigation
+  const [openMoreMenu, setOpenMoreMenu] = useState(null); // ayah number with open ... menu
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showTajweedLegend, setShowTajweedLegend] = useState(false);
@@ -200,7 +201,11 @@ export default function SurahReader() {
             tajweed: v.text_uthmani_tajweed,
             indopak: v.text_indopak,
             translations: v.translations?.map(t => ({ id: t.resource_id, text: t.text?.replace(/<[^>]+>/g, '') })) || [], // Multi-translation array
-            audio: v.audio?.url ? `https://verses.quran.com/${v.audio.url}` : null,
+            audio: v.audio?.url ? (
+              v.audio.url.startsWith('http') ? v.audio.url :
+              v.audio.url.startsWith('//') ? `https:${v.audio.url}` :
+              `https://verses.quran.com/${v.audio.url}`
+            ) : null,
             words: v.words.map(w => ({
               id: w.id,
               position: w.position,
@@ -208,7 +213,11 @@ export default function SurahReader() {
               tajweed: w.text_uthmani_tajweed || w.text_uthmani,
               translation: w.translation?.text,
               transliteration: w.transliteration?.text,
-              audio: w.audio_url ? `https://audio.quranwbc.com/${w.audio_url}` : null,
+              audio: w.audio_url ? (
+                w.audio_url.startsWith('http') ? w.audio_url :
+                w.audio_url.startsWith('//') ? `https:${w.audio_url}` :
+                `https://audio.qurancdn.com/${w.audio_url}`
+              ) : null,
               char_type_name: w.char_type_name
             }))
           }))
@@ -499,71 +508,40 @@ export default function SurahReader() {
             </div>
             
             <div className="flex-1 overflow-y-auto scroll-thin">
-              {/* ── SURAH TAB: dual column (surah list + verse column for current surah) ── */}
+              {/* ── SURAH TAB: full-width surah list ── */}
               {sidebarTab === 'surah' && (
-                <div className="flex" style={{ height: 'calc(100vh - 160px)' }}>
-                  {/* Left: Surah list — clicking navigates directly */}
-                  <div className="flex-1 flex flex-col border-r border-border/40 min-w-0">
-                    <div className="p-3 shrink-0">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Search Surah"
-                          className="w-full bg-accent/20 border border-border/40 rounded-lg pl-8 pr-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#178b50]"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      {surahsList
-                        .filter(s => s.englishName.toLowerCase().includes(searchQuery.toLowerCase()) || String(s.number).includes(searchQuery))
-                        .map((s) => (
-                          <Link
-                            key={s.number}
-                            to={`/quran/${s.number}`}
-                            onClick={() => setIsSidebarOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-colors ${
-                              s.number === num
-                                ? 'bg-[#178b50]/10 text-foreground border-l-2 border-[#178b50]'
-                                : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
-                            }`}
-                          >
-                            <span className={`w-5 text-xs shrink-0 ${s.number === num ? 'text-[#178b50] font-bold' : ''}`}>{s.number}</span>
-                            <span className="truncate">{s.englishName}</span>
-                          </Link>
-                        ))
-                      }
+                <div className="flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
+                  <div className="p-3 shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search Surah"
+                        className="w-full bg-accent/20 border border-border/40 rounded-lg pl-8 pr-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#178b50]"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
                     </div>
                   </div>
-
-                  {/* Right: Verse numbers for CURRENT surah — clicking scrolls */}
-                  <div className="w-[68px] shrink-0 flex flex-col">
-                    <div className="p-2 shrink-0 bg-card border-b border-border/40 text-center">
-                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Verse</span>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      {data && Array.from({ length: data.ayahs.length }, (_, i) => i + 1).map((v) => (
-                        <button
-                          key={v}
-                          onClick={() => {
-                            setIsSidebarOpen(false);
-                            setTimeout(() => {
-                              const el = document.querySelector(`[data-ayah-row="${v}"]`);
-                              if (el) {
-                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                el.classList.add('bg-primary/10');
-                                setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
-                              }
-                            }, 100);
-                          }}
-                          className="w-full py-2 text-[13px] font-medium text-center text-muted-foreground hover:bg-[#178b50]/10 hover:text-[#178b50] transition-colors"
+                  <div className="flex-1 overflow-y-auto">
+                    {surahsList
+                      .filter(s => s.englishName.toLowerCase().includes(searchQuery.toLowerCase()) || String(s.number).includes(searchQuery))
+                      .map((s) => (
+                        <Link
+                          key={s.number}
+                          to={`/quran/${s.number}`}
+                          onClick={() => setIsSidebarOpen(false)}
+                          className={`flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors ${
+                            s.number === num
+                              ? 'bg-[#178b50]/10 text-foreground border-l-2 border-[#178b50]'
+                              : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
+                          }`}
                         >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
+                          <span className={`w-6 text-xs shrink-0 ${s.number === num ? 'text-[#178b50] font-bold' : ''}`}>{s.number}</span>
+                          <span className="truncate">{s.englishName}</span>
+                        </Link>
+                      ))
+                    }
                   </div>
                 </div>
               )}
@@ -1129,28 +1107,68 @@ export default function SurahReader() {
                         </button>
                       </div>
                       <div className="flex items-center gap-5 text-muted-foreground">
-                        <button onClick={() => { navigator.clipboard.writeText(`${a.arabic}\n\n${a.translation}`); toast.success("Ayah copied to clipboard!"); }} className="text-foreground hover:text-primary transition-colors" title="Copy"><Copy className="h-5 w-5" /></button>
-                        <button onClick={() => { navigator.clipboard.writeText(`https://quran.com/${data.number}/${a.number}`); toast.success("Link copied!"); }} className="text-foreground hover:text-primary transition-colors" title="Share"><Share2 className="h-5 w-5" /></button>
-                        <button className="text-foreground hover:text-primary transition-colors" title="More options"><MoreHorizontal className="h-5 w-5" /></button>
+                        <button onClick={() => { navigator.clipboard.writeText(`${a.arabic}\n\n${a.translation}`); toast.success("Ayah copied!"); }} className="text-foreground hover:text-primary transition-colors" title="Copy"><Copy className="h-5 w-5" /></button>
+                        <button onClick={() => { navigator.clipboard.writeText(`https://deenguide.app/quran/${data.number}/${a.number}`); toast.success("Link copied!"); }} className="text-foreground hover:text-primary transition-colors" title="Share"><Share2 className="h-5 w-5" /></button>
+                        {/* ... menu */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setOpenMoreMenu(openMoreMenu === a.number ? null : a.number)}
+                            className="text-foreground hover:text-primary transition-colors" title="More options"
+                          >
+                            <MoreHorizontal className="h-5 w-5" />
+                          </button>
+                          {openMoreMenu === a.number && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setOpenMoreMenu(null)} />
+                              <div className="absolute right-0 top-8 z-50 w-52 bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                                <button
+                                  onClick={() => { toggleTafsir(a.number); setOpenMoreMenu(null); }}
+                                  className={`w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium transition-colors hover:bg-accent/50 ${ tafsir[a.number]?.open ? 'text-primary' : 'text-foreground' }`}
+                                >
+                                  <BookText className="h-4 w-4" /> Tafsir
+                                </button>
+                                <button
+                                  onClick={() => { setIsSettingsOpen(true); setTimeout(() => setSettingsTab('wbw'), 50); setOpenMoreMenu(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
+                                >
+                                  <Languages className="h-4 w-4" /> Word by Word
+                                </button>
+                                <button
+                                  onClick={() => { setIsSettingsOpen(true); setTimeout(() => setSettingsTab('translation'), 50); setOpenMoreMenu(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
+                                >
+                                  <MessageSquareText className="h-4 w-4" /> Translation
+                                </button>
+                                <div className="border-t border-border/40" />
+                                <button
+                                  onClick={() => { setIsSettingsOpen(true); setOpenMoreMenu(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
+                                >
+                                  <Settings className="h-4 w-4" /> Settings
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
                     {/* Arabic Text (Word by Word & Tajweed) */}
-                    <div className="mb-10 flex flex-wrap justify-start gap-x-3 gap-y-8 dir-rtl" dir="rtl">
+                    <div className="mb-6 flex flex-wrap justify-start gap-x-2 gap-y-5 dir-rtl" dir="rtl">
                       {arabicScript === 'indopak' ? (
                          <div className="font-arabic leading-[2.4] text-foreground text-right" style={{ fontSize: getArabicFontSize() }}>
                            {a.indopak} <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>
                          </div>
                       ) : (
                         a.words.map((w, i) => (
-                          <div key={w.id} className="group relative flex flex-col items-center justify-start cursor-pointer hover:bg-accent/20 rounded p-1.5 transition-colors text-center">
+                          <div key={w.id} className="group relative flex flex-col items-center justify-start cursor-pointer hover:bg-accent/20 rounded p-1 transition-colors text-center">
                             <span 
-                              className="font-arabic leading-[2.4] text-foreground transition-all duration-300" 
+                              className="font-arabic leading-[1.8] text-foreground transition-all duration-300" 
                               style={{ fontSize: w.char_type_name === 'end' ? `max(16px, calc(${getArabicFontSize()} * 0.6))` : getArabicFontSize() }}
                               dangerouslySetInnerHTML={{ __html: w.char_type_name === 'end' ? `<span class="text-primary">﴾${w.arabic}﴿</span>` : (arabicScript === 'tajweed' ? w.tajweed : w.arabic) }}
                             />
                             {w.char_type_name !== 'end' && (wbwSettings.transliteration || wbwSettings.translation) && (
-                              <div className="flex flex-col items-center mt-3 space-y-1">
+                              <div className="flex flex-col items-center mt-1.5 space-y-0.5">
                                 {wbwSettings.transliteration && w.transliteration && (
                                   <span className="text-[12px] font-medium text-primary opacity-80">{w.transliteration}</span>
                                 )}
@@ -1184,24 +1202,7 @@ export default function SurahReader() {
                       })}
                     </div>
 
-                    {/* Ayah Action Bar */}
-                    <div className="mt-8 pt-4 border-t border-border/30 flex flex-wrap items-center gap-x-6 gap-y-4 text-[13.5px] font-medium text-muted-foreground border-b border-transparent">
-                      <button onClick={() => toggleTafsir(a.number)} className={`flex items-center gap-2 pb-3 -mb-[17px] transition-colors ${tafsir[a.number]?.open ? 'text-primary border-b-2 border-primary' : 'hover:text-primary border-b-2 border-transparent'}`}>
-                        <BookText className="h-4 w-4" /> Tafsirs
-                      </button>
-                      <button onClick={() => toast.info('Lessons coming soon!')} className="flex items-center gap-2 pb-3 -mb-[17px] border-b-2 border-transparent hover:text-primary transition-colors">
-                        <GraduationCap className="h-4 w-4" /> Lessons
-                      </button>
-                      <button onClick={() => toast.info('Reflections coming soon!')} className="flex items-center gap-2 pb-3 -mb-[17px] border-b-2 border-transparent hover:text-primary transition-colors">
-                        <MessageSquareText className="h-4 w-4" /> Reflections
-                      </button>
-                      <button onClick={() => toast.info('Answers coming soon!')} className="flex items-center gap-2 pb-3 -mb-[17px] border-b-2 border-transparent hover:text-primary transition-colors">
-                        <Lightbulb className="h-4 w-4" /> Answers
-                      </button>
-                      <button onClick={() => toast.info('Hadith coming soon!')} className="flex items-center gap-2 pb-3 -mb-[17px] border-b-2 border-transparent hover:text-primary transition-colors">
-                        <BookText className="h-4 w-4" /> Hadith
-                      </button>
-                    </div>
+
 
                     {/* Tafsir Content Block */}
                     {tafsir[a.number]?.open && (
@@ -1354,57 +1355,26 @@ export default function SurahReader() {
             </div>
           )}
 
-          {/* End of Chapter & Explore Section */}
+          {/* End of Chapter */}
           <div className="mt-20 pt-10 border-t border-border/40">
             <div className="flex items-center justify-center gap-6 text-[15px] font-medium mb-10">
-              <span className="text-muted-foreground">End of Chapter</span>
-              <span className="text-primary hover:underline cursor-pointer">Continue Reading</span>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-5">
-              {/* Read More Card */}
-              <div className="rounded-[20px] border border-border/60 bg-card p-6 shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-foreground">Read More</h3>
-                  <button className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider hover:underline">
-                    <PlayCircle className="h-3.5 w-3.5" /> Read again
-                  </button>
-                </div>
-                <Link 
-                  to={`/quran/${Math.min(114, data.number + 1)}`} 
-                  className="group flex items-center justify-between rounded-xl bg-background border border-border/50 p-4 hover:border-primary/40 transition-colors"
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <PlayCircle className="h-4 w-4 text-primary" /> Read Again
+              </button>
+              <span className="text-border">|</span>
+              {data.number < 114 ? (
+                <Link
+                  to={`/quran/${data.number + 1}`}
+                  className="text-primary hover:underline font-semibold"
                 >
-                  <div>
-                    <h4 className="font-bold text-lg text-foreground">{data.number + 1}. Next Surah</h4>
-                    <p className="text-sm text-muted-foreground">Continue to the next chapter</p>
-                  </div>
-                  <div className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background group-hover:bg-primary transition-colors">
-                    Next
-                  </div>
+                  Continue Reading →
                 </Link>
-              </div>
-
-              {/* Explore Card */}
-              <div className="rounded-[20px] border border-border/60 bg-card p-6 shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-foreground">Explore</h3>
-                  <button className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider hover:underline">
-                    <Bookmark className="h-3.5 w-3.5" /> My Quran
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                  {[
-                    { label: 'Tafsir', icon: BookText },
-                    { label: 'Reflections', icon: MessageSquareText },
-                    { label: 'Lessons', icon: List },
-                    { label: 'Answers', icon: Sparkles }
-                  ].map(tag => (
-                    <div key={tag.label} className="rounded-full border border-border/60 bg-background px-4 py-2 text-[13px] font-bold flex items-center gap-2 hover:border-primary/50 hover:text-primary cursor-pointer transition-colors text-foreground/90">
-                      <tag.icon className="h-4 w-4 text-primary" /> {tag.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              ) : (
+                <span className="text-muted-foreground">You've completed the Quran 🎉</span>
+              )}
             </div>
           </div>
         </>

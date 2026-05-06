@@ -29,7 +29,6 @@ const sampleQuestions = [
 
 export default function Ask() {
   const [question, setQuestion] = useState("");
-  const [mode, setMode] = useState("deep");
   const [history, setHistory] = useState([]); // {q, a, error}
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
@@ -49,7 +48,7 @@ export default function Ask() {
     setHistory((h) => [...h, { q: text }]);
     setLoading(true);
     try {
-      const data = await ai.ask({ question: text, mode });
+      const data = await ai.ask({ question: text });
       setHistory((h) => {
         const copy = [...h];
         copy[copy.length - 1] = { q: text, a: data };
@@ -106,24 +105,7 @@ export default function Ask() {
         </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Depth:</span>
-        {["simple", "deep"].map((m) => (
-          <button
-            key={m}
-            data-testid={`ask-mode-${m}`}
-            onClick={() => setMode(m)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-all ${
-              mode === m
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {m}
-          </button>
-        ))}
-      </div>
+
 
       {/* Conversation */}
       {history.length === 0 && !loading && (
@@ -218,18 +200,19 @@ export default function Ask() {
 const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
   const saved = isBookmarked("answers", data.id);
   return (
-    <div data-testid={`answer-card-${index}`} className="rounded-3xl border border-border bg-card p-5 sm:p-7 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
+    <div data-testid={`answer-card-${index}`} className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 bg-accent/10">
         <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-4 w-4" />
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
           </span>
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">DeenGuide</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">DeenGuide AI</span>
         </div>
         <button
           data-testid={`save-answer-btn-${index}`}
           onClick={() => {
-            toggle("answers", { id: data.id, question: data.question, answer: data.answer, created_at: data.created_at });
+            toggle("answers", { id: data.id, question: data.question, answer: data.detailed_answer || data.answer, created_at: data.created_at });
             toast.success(saved ? "Removed from saved" : "Saved to bookmarks");
           }}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
@@ -239,109 +222,92 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
         </button>
       </div>
 
-      {data.notice && (
-        <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-          {data.notice}
+      <div className="p-5 sm:p-6 space-y-6">
+        {/* Main Narrative Answer (MuslimGPT Style) */}
+        <div className="text-[15px] leading-[1.8] text-foreground/90 whitespace-pre-wrap font-medium space-y-4">
+          {data.detailed_answer ? data.detailed_answer : data.answer}
         </div>
-      )}
 
-      {/* 📌 Answer */}
-      <div className="mt-4">
-        <SectionLabel icon={Quote} label="Answer" />
-        <h3 className="mt-2 font-heading text-xl font-semibold leading-snug">{data.answer}</h3>
-      </div>
+        {/* Fallback for legacy 'explanation' if any */}
+        {data.explanation && !data.detailed_answer && (
+          <div className="text-[15px] leading-[1.8] text-foreground/80 whitespace-pre-wrap">
+            {data.explanation}
+          </div>
+        )}
 
-      {data.quran_refs?.length > 0 && (
-        <div className="mt-5 space-y-3">
-          <SectionLabel icon={BookOpen} label="Qur'an Evidence" />
-          {data.quran_refs.map((q, i) => (
-            <div key={i} data-testid={`quran-ref-${i}`} className="rounded-xl border border-border/60 bg-muted/30 p-4 border-l-4 border-l-primary">
-              <div className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Surah {q.surah_name} ({q.surah}:{q.ayah})
-              </div>
-              <p dir="rtl" className="mt-3 text-right font-arabic text-2xl leading-[2.2] text-foreground">
-                {q.arabic}
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{q.translation}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {data.hadith_refs?.length > 0 && (
-        <div className="mt-5 space-y-3">
-          <SectionLabel icon={ScrollText} label="Hadith Evidence" />
-          {data.hadith_refs.map((h, i) => {
-            const hid = `${index}-h-${i}`;
-            const speaking = tts?.speaking && tts?.activeId === hid;
-            return (
-            <div key={i} data-testid={`hadith-ref-${i}`} className="rounded-xl border border-border/60 bg-muted/30 p-4 border-l-4 border-l-primary">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-semibold text-foreground">{collectionLabels[h.collection] || h.collection}</span>
-                <span className="text-muted-foreground">#{h.number}</span>
-                {h.narrator && <span className="text-muted-foreground">· {h.narrator}</span>}
-                <AuthenticityBadge level={h.authenticity} />
-                {tts?.supported && (h.arabic || h.english) && (
-                  <button
-                    data-testid={`ai-hadith-tts-${index}-${i}`}
-                    onClick={() => {
-                      if (speaking) tts.stop();
-                      else tts.speak(h.arabic || h.english, { lang: h.arabic ? "ar-SA" : "en-US", id: hid });
-                    }}
-                    className={`ml-auto grid h-7 w-7 place-items-center rounded-full border border-border bg-background hover:bg-accent ${speaking ? "text-primary border-primary" : ""}`}
-                    aria-label="Listen"
-                    title={speaking ? "Stop" : "Listen"}
+        {/* Quran Evidence */}
+        {data.quran_refs?.length > 0 && (
+          <div className="space-y-3 pt-4 border-t border-border/40">
+            <SectionLabel icon={BookOpen} label="Qur'an Evidence" />
+            {data.quran_refs.map((q, i) => (
+              <div key={i} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
+                <div className="px-4 py-2 bg-primary/8 border-b border-border/40 flex items-center justify-between">
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                    Surah {q.surah_name} {q.surah}:{q.ayah}
+                  </span>
+                  <a
+                    href={`https://quran.com/${q.surah}/${q.ayah}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-semibold text-primary hover:underline"
                   >
-                    {speaking ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-                  </button>
-                )}
+                    View on Quran.com ↗
+                  </a>
+                </div>
+                <div className="p-4">
+                  <p dir="rtl" className="text-right font-arabic text-2xl leading-[2.2] text-foreground mb-3">{q.arabic}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground italic">"{q.translation}"</p>
+                </div>
               </div>
-              {h.arabic && (
-                <p dir="rtl" className="mt-3 text-right font-arabic text-xl leading-[2.2]">
-                  {h.arabic}
-                </p>
-              )}
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{h.english}</p>
-            </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {data.explanation && (
-        <div className="mt-5">
-          <SectionLabel icon={Brain} label="Explanation" />
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{data.explanation}</p>
-        </div>
-      )}
-
-      {data.scholarly_notes && (
-        <div className="mt-5 rounded-xl border border-border/60 bg-accent/30 p-4 border-l-4 border-l-amber-500/60">
-          <SectionLabel icon={Scale} label="Scholarly Notes" />
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{data.scholarly_notes}</p>
-        </div>
-      )}
-
-      {data.evidence_type && (
-        <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-4 py-1.5 text-xs">
-          <FileSearch className="h-3.5 w-3.5 text-primary" />
-          <span className="font-semibold text-muted-foreground">Evidence type:</span>
-          <span className="font-medium text-foreground">{data.evidence_type}</span>
-        </div>
-      )}
-
-      {data.related_duas?.length > 0 && (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {data.related_duas.map((d, i) => (
-            <span key={i} className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground">
-              {d}
-            </span>
-          ))}
-        </div>
-      )}
+        {/* Hadith Evidence */}
+        {data.hadith_refs?.length > 0 && (
+          <div className="space-y-3 pt-4 border-t border-border/40">
+            <SectionLabel icon={ScrollText} label="Hadith Evidence" />
+            {data.hadith_refs.map((h, i) => {
+              const hid = `${index}-h-${i}`;
+              const speaking = tts?.speaking && tts?.activeId === hid;
+              const collLabel = collectionLabels[h.collection] || h.collection;
+              const sunnahUrl = `https://sunnah.com/${h.collection}:${h.number}`;
+              return (
+                <div key={i} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
+                  <div className="px-4 py-2 bg-primary/8 border-b border-border/40 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-foreground">{collLabel}</span>
+                      <span className="text-xs text-muted-foreground">#{h.number}</span>
+                      {h.narrator && <span className="text-xs text-muted-foreground">· {h.narrator}</span>}
+                      <AuthenticityBadge level={h.authenticity} />
+                      {tts?.supported && (h.arabic || h.english) && (
+                        <button
+                          onClick={() => { if (speaking) tts.stop(); else tts.speak(h.arabic || h.english, { lang: h.arabic ? "ar-SA" : "en-US", id: hid }); }}
+                          className={`ml-1 grid h-6 w-6 place-items-center rounded-full border border-border bg-background hover:bg-accent ${speaking ? "text-primary border-primary" : ""}`}
+                          title={speaking ? "Stop" : "Listen"}
+                        >
+                          {speaking ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                        </button>
+                      )}
+                    </div>
+                    <a href={sunnahUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold text-primary hover:underline">
+                      View on Sunnah.com ↗
+                    </a>
+                  </div>
+                  <div className="p-4">
+                    {h.arabic && <p dir="rtl" className="text-right font-arabic text-xl leading-[2.2] mb-3">{h.arabic}</p>}
+                    <p className="text-sm leading-relaxed text-muted-foreground">{h.english}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
 
 const SectionLabel = ({ icon: Icon, label }) => (
   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
