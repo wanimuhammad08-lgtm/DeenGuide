@@ -168,10 +168,10 @@ export default function QiblaDirection() {
         setLoading(false);
       },
       () => {
-        setError("Location access denied. Please allow location permission and refresh.");
+        setError("Location access denied or unavailable. Please enable permissions or search manually in Prayer Times.");
         setLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 15000 }
     );
   }, []);
 
@@ -191,18 +191,21 @@ export default function QiblaDirection() {
     rafRef.current = requestAnimationFrame(animateHeading);
   }, []);
 
+  const [permissionGranted, setPermissionGranted] = useState(false);
+
   // ── Device orientation ──────────────────────────────────────────────────────
   useEffect(() => {
     // Check for iOS permission requirement
     if (
       typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function"
+      typeof DeviceOrientationEvent.requestPermission === "function" &&
+      !permissionGranted
     ) {
       setCompassStatus("needsPermission");
       return;
     }
 
-    if (typeof DeviceOrientationEvent === "undefined") {
+    if (typeof window.DeviceOrientationEvent === "undefined") {
       setCompassStatus("unsupported");
       return;
     }
@@ -210,21 +213,23 @@ export default function QiblaDirection() {
     const handler = (e) => {
       let h = null;
 
-      if (typeof e.webkitCompassHeading === "number") {
-        // iOS Safari (most reliable)
+      if (e.webkitCompassHeading !== undefined) {
+        // iOS Safari
         h = e.webkitCompassHeading;
-        setNeedsCalibration(
-          e.webkitCompassAccuracy !== undefined && e.webkitCompassAccuracy > 25
-        );
-      } else if (e.alpha !== null && e.alpha !== undefined) {
-        // Android / others
+        setNeedsCalibration(e.webkitCompassAccuracy !== undefined && e.webkitCompassAccuracy > 25);
+      } else if (e.type === "deviceorientationabsolute" && e.alpha !== null) {
+        // Android absolute
+        h = (360 - e.alpha) % 360;
+        setNeedsCalibration(false);
+      } else if (e.absolute === true && e.alpha !== null) {
+        // Fallback for some browsers
         h = (360 - e.alpha) % 360;
         setNeedsCalibration(false);
       }
 
       if (h !== null) {
         headingRaw.current = h;
-        setCompassStatus("active");
+        if (compassStatus !== "active") setCompassStatus("active");
       }
     };
 
@@ -243,13 +248,17 @@ export default function QiblaDirection() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       clearTimeout(timer);
     };
-  }, [animateHeading]);
+  }, [animateHeading, permissionGranted]);
 
   const requestIOSPermission = async () => {
     try {
       const result = await DeviceOrientationEvent.requestPermission();
-      if (result === "granted") window.location.reload();
-      else setCompassStatus("unsupported");
+      if (result === "granted") {
+        setPermissionGranted(true);
+        setCompassStatus("checking");
+      } else {
+        setCompassStatus("unsupported");
+      }
     } catch {
       setCompassStatus("unsupported");
     }
@@ -296,6 +305,11 @@ export default function QiblaDirection() {
           >
             Try Again
           </button>
+          <div className="pt-2">
+            <Link to="/prayer-times" className="text-xs text-primary font-medium hover:underline">
+              Or search location manually in Prayer Times
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-5">

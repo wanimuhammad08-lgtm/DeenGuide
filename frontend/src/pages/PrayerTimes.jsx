@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Search, X, Settings } from "lucide-react";
+import { ArrowLeft, ChevronRight, MapPin, Search, X } from "lucide-react";
 import { calculatePrayerTimes, getCurrentPrayer, CALC_METHODS, JURISTIC_METHODS } from "@/lib/prayerTimes";
 import { gregorianToHijri, fetchTodayHijri, HIJRI_MONTHS } from "@/lib/hijriDate";
 
@@ -79,10 +79,13 @@ export default function PrayerTimes() {
   const [juristicMethod, setJuristicMethod] = useState(() => localStorage.getItem("dg_juristic") || "shafi");
   const [showCalcMethods, setShowCalcMethods] = useState(false);
   const [showJuristic, setShowJuristic] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [offsetDays, setOffsetDays] = useState(0);
   const [countdownStr, setCountdownStr] = useState("");
+
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
 
   // Location search state
   const [showLocationSearch, setShowLocationSearch] = useState(false);
@@ -206,6 +209,32 @@ export default function PrayerTimes() {
     setShowJuristic(false);
   };
 
+  // Swipe handlers
+  const minSwipeDistance = 50;
+  const onPointerDown = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches ? e.targetTouches[0].clientX : e.clientX);
+  };
+  const onPointerMove = (e) => {
+    if (touchStart !== null) {
+      setTouchEnd(e.targetTouches ? e.targetTouches[0].clientX : e.clientX);
+    }
+  };
+  const onPointerUp = () => {
+    if (touchStart === null || touchEnd === null) {
+      setTouchStart(null);
+      setTouchEnd(null);
+      return;
+    }
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) setOffsetDays(d => Math.min(d + 1, 6));
+    if (isRightSwipe) setOffsetDays(d => Math.max(d - 1, 0));
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
   // Location search
   const searchLocation = useCallback(async (q) => {
     if (!q || q.length < 2) {
@@ -215,15 +244,20 @@ export default function PrayerTimes() {
     setSearching(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1`
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`
       );
       const data = await res.json();
+      if (!data.results) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
       setSearchResults(
-        data.map((r) => ({
-          name: r.display_name,
-          city: r.address?.city || r.address?.town || r.address?.county || r.address?.state || r.name,
-          lat: parseFloat(r.lat),
-          lng: parseFloat(r.lon),
+        data.results.map((r) => ({
+          name: [r.admin1, r.country].filter(Boolean).join(", "),
+          city: r.name,
+          lat: parseFloat(r.latitude),
+          lng: parseFloat(r.longitude),
         }))
       );
     } catch {
@@ -263,7 +297,7 @@ export default function PrayerTimes() {
   };
 
   const prayerOrder = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha", "qiyam"];
-  const dateStr = `${WEEKDAYS[targetDate.getDay()]}, ${String(targetDate.getDate()).padStart(2, '0')} ${MONTHS[targetDate.getMonth()]}`;
+  const dateStr = `${WEEKDAYS[targetDate.getDay()]}, ${MONTHS[targetDate.getMonth()]} ${targetDate.getDate()}, ${targetDate.getFullYear()}`;
   const hijriStr = `${hijriToday.day} ${HIJRI_MONTHS[hijriToday.month - 1]}, ${hijriToday.year}`;
 
   const selectedCalc = CALC_METHODS.find((m) => m.id === calcMethod);
@@ -429,123 +463,31 @@ export default function PrayerTimes() {
     );
   }
 
-  // Settings modal
-  if (showSettings) {
-    return (
-      <div className="mx-auto max-w-lg">
-        <div className="mb-4 flex items-center gap-4">
-          <button onClick={() => setShowSettings(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="font-heading text-xl font-bold">Settings</h1>
-        </div>
-
-        <div className="divide-y divide-border rounded-2xl border border-border bg-card">
-          <button
-            onClick={() => { setShowSettings(false); setShowLocationSearch(true); }}
-            className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-accent"
-          >
-            <div>
-              <p className="text-sm font-semibold">Location</p>
-              <p className="text-xs text-muted-foreground">{locationName}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-
-          <button
-            onClick={() => { setShowSettings(false); setShowJuristic(true); }}
-            className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-accent"
-          >
-            <div>
-              <p className="text-sm font-semibold">Juristic Method</p>
-              <p className="text-xs text-muted-foreground">{selectedJuristic?.name}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-
-          <button
-            onClick={() => { setShowSettings(false); setShowCalcMethods(true); }}
-            className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-accent"
-          >
-            <div>
-              <p className="text-sm font-semibold">Calculation Method</p>
-              <p className="text-xs text-muted-foreground">
-                {selectedCalc?.name} ({selectedCalc?.fajrAngle}°, {selectedCalc?.ishaMinutes ? `${selectedCalc.ishaMinutes}m` : `${selectedCalc?.ishaAngle}°`})
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-lg">
-      {/* New Header */}
+    <div className="mx-auto max-w-lg pb-24 px-4">
+      {/* Page Header */}
       <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Daily Worship</p>
-        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">Prayer Times</h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Daily Worship
+        </p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight">
+          Prayer Times
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Accurate daily prayer timings based on your location and calculation method.
         </p>
       </div>
 
-      {/* Timeline Widget (Zawal) */}
-      <div className="mb-6 rounded-3xl bg-card border border-border p-6 shadow-sm relative overflow-hidden">
-        <div className="text-center font-bold text-lg mb-8 text-foreground">
-          {selectedJuristic?.name.split(" ")[0]}
-        </div>
-        
-        <div className="flex items-center justify-between text-sm relative z-10">
-          {/* Left: Sunrise */}
-          <div className="flex flex-col items-center bg-card px-2 relative z-20">
-            <span className="mb-2 text-muted-foreground">Sunrise</span>
-            <PrayerIcon type="sunrise" className="h-8 w-8 mb-2 text-foreground" />
-            <span className="font-medium text-foreground">{times?.sunrise?.time}</span>
-          </div>
-
-          {/* Center line */}
-          <div className="absolute left-[15%] right-[15%] top-[38px] border-t-[1.5px] border-dashed border-border z-0" />
-          
-          {/* Center Text (Zawal) */}
-          <div className="absolute top-[16px] left-1/2 -translate-x-1/2 text-center text-xs text-muted-foreground w-full z-10 bg-card px-2 max-w-[160px]">
-            Zawal time in {locationName.split(',')[0]}
-            <div className="mt-7 font-medium text-sm text-foreground">
-              {(() => {
-                if (!times?.dhuhr?.ms) return "";
-                const d = new Date(times.dhuhr.ms);
-                const start = new Date(d.getTime() - 10 * 60000);
-                return `${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${times.dhuhr.time}`;
-              })()}
-            </div>
-          </div>
-
-          {/* Right: Sunset */}
-          <div className="flex flex-col items-center bg-card px-2 relative z-20">
-            <span className="mb-2 text-muted-foreground">Sunset</span>
-            <PrayerIcon type="maghrib" className="h-8 w-8 mb-2 text-foreground" />
-            <span className="font-medium text-foreground">{times?.maghrib?.time}</span>
-          </div>
-        </div>
-        
-        <div className="mt-8 text-center text-sm font-medium text-muted-foreground">
-          Next Sunrise <span className="text-foreground ml-1 font-bold">{countdownStr}</span>
-        </div>
-      </div>
-
-      {/* Date Browser */}
-      <div className="mb-6 flex items-center justify-between rounded-2xl bg-card border border-border px-4 py-4 shadow-sm">
-        <button onClick={() => setOffsetDays(d => d - 1)} className="p-2 text-muted-foreground hover:text-foreground transition hover:bg-accent rounded-full">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <div className="text-center">
-          <p className="text-[15px] font-medium text-foreground">{dateStr}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-0.5">{hijriStr}</p>
-        </div>
-        <button onClick={() => setOffsetDays(d => d + 1)} className="p-2 text-muted-foreground hover:text-foreground transition hover:bg-accent rounded-full">
-          <ChevronRight className="h-5 w-5" />
-        </button>
+      {/* Date Header without Navigation Arrows */}
+      <div className="mb-8 text-center">
+        <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
+          {dateStr}
+        </h1>
+        {hijriStr && (
+          <p className="text-sm font-medium text-muted-foreground mt-1">
+            {hijriStr}
+          </p>
+        )}
       </div>
 
       {/* Prayer times list */}
@@ -566,7 +508,14 @@ export default function PrayerTimes() {
       ) : (
         <div className="space-y-6">
           {/* Prayer list */}
-          <div className="rounded-3xl border border-border bg-card px-2 py-2">
+          <div 
+            className="rounded-3xl border border-border bg-card px-2 py-3 select-none touch-pan-y"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onPointerLeave={onPointerUp}
+          >
             {prayerOrder.map((key) => {
               const prayer = times[key];
               const isCurrent = key === current;
@@ -583,27 +532,41 @@ export default function PrayerTimes() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className={`font-heading text-sm font-semibold ${isCurrent ? "text-primary" : ""}`}>
+                      <span className={`font-heading text-[15px] font-semibold ${isCurrent ? "text-primary" : "text-foreground"}`}>
                         {prayer.name}
                       </span>
                       {isCurrent && (
-                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                        <span className="rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-bold text-primary-foreground">
                           Now
                         </span>
                       )}
                       {isNext && (
-                        <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">
+                        <span className="rounded-full bg-primary/20 text-primary px-2.5 py-0.5 text-[10px] font-bold">
                           Next
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className={`font-heading text-sm font-bold tabular-nums ${isCurrent ? "text-primary" : ""}`}>
+                  <span className={`font-heading text-[15px] font-bold tabular-nums ${isCurrent ? "text-primary" : "text-foreground"}`}>
                     {prayer.time}
                   </span>
                 </div>
               );
             })}
+
+            {/* Pagination Dots */}
+            <div className="flex justify-center gap-1.5 mt-4 mb-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setOffsetDays(i)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    offsetDays === i ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                  }`}
+                  aria-label={`Go to day ${i}`}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Monthly Timetable link */}
@@ -612,23 +575,48 @@ export default function PrayerTimes() {
             className="flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-4 transition hover:bg-accent"
           >
             <div className="flex items-center gap-3">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-muted-foreground">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 text-foreground">
                 <rect x="3" y="4" width="18" height="18" rx="2" />
                 <path d="M3 10h18M16 2v4M8 2v4" strokeLinecap="round" />
               </svg>
-              <span className="text-sm font-semibold">Monthly Timetable</span>
+              <span className="text-[15px] font-semibold text-foreground">Monthly Timetable</span>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
 
-          {/* Settings Option at Bottom */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 font-semibold text-foreground transition hover:bg-accent"
-          >
-            <Settings className="h-5 w-5 text-muted-foreground" />
-            <span>Prayer Settings</span>
-          </button>
+          {/* Settings Cards */}
+          <div className="divide-y divide-border rounded-2xl border border-border bg-card">
+            <button
+              onClick={() => setShowLocationSearch(true)}
+              className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-accent"
+            >
+              <div>
+                <p className="text-[15px] font-semibold text-foreground">Location</p>
+                <p className="mt-0.5 text-sm text-muted-foreground truncate max-w-[220px] sm:max-w-[300px]">{locationName}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setShowJuristic(true)}
+              className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-accent"
+            >
+              <div>
+                <p className="text-[15px] font-semibold text-foreground">Juristic Method</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{selectedJuristic?.name}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setShowCalcMethods(true)}
+              className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-accent"
+            >
+              <div>
+                <p className="text-[15px] font-semibold text-foreground">Calculation Method</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{selectedCalc?.name}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       )}
     </div>
