@@ -173,6 +173,7 @@ export default function QiblaDirection() {
       },
       { enableHighAccuracy: false, timeout: 15000 }
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Smooth heading animation loop ───────────────────────────────────────────
@@ -248,6 +249,7 @@ export default function QiblaDirection() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animateHeading, permissionGranted]);
 
   const requestIOSPermission = async () => {
