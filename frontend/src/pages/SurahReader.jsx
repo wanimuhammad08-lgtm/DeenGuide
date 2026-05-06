@@ -499,14 +499,9 @@ export default function SurahReader() {
             </div>
             
             <div className="flex-1 overflow-y-auto scroll-thin">
-              {/* Surah Tab: side-by-side list with verse numbers column */}
-              {(sidebarTab === 'surah' || sidebarTab === 'verse') && (() => {
-                // navSurah defaults to current surah on first open
+              {/* ── SURAH TAB: dual column (surah list + verse column) ── */}
+              {sidebarTab === 'surah' && (() => {
                 const activeSurah = navSurah ?? surahsList.find(s => s.number === num);
-                const verseCount = activeSurah?.number === num
-                  ? data?.ayahs?.length ?? 0
-                  : (surahsList.find(s => s.number === activeSurah?.number)?.numberOfAyahs ?? 0);
-
                 return (
                 <div className="flex" style={{ height: 'calc(100vh - 160px)' }}>
                   {/* Left: Surah list */}
@@ -551,14 +546,13 @@ export default function SurahReader() {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {activeSurah && Array.from(
-                        { length: activeSurah.number === num ? (data?.ayahs?.length ?? 0) : (activeSurah.numberOfAyahs ?? activeSurah.verses_count ?? 0) },
+                        { length: activeSurah.number === num ? (data?.ayahs?.length ?? 0) : (activeSurah.numberOfAyahs ?? 0) },
                         (_, i) => i + 1
                       ).map((v) => (
                         <button
                           key={v}
                           onClick={() => {
                             if (activeSurah.number === num) {
-                              // same surah — just scroll
                               setIsSidebarOpen(false);
                               setTimeout(() => {
                                 const el = document.querySelector(`[data-ayah-row="${v}"]`);
@@ -569,7 +563,6 @@ export default function SurahReader() {
                                 }
                               }, 100);
                             } else {
-                              // different surah — navigate there and scroll to verse
                               setIsSidebarOpen(false);
                               navigate(`/quran/${activeSurah.number}#ayah=${v}`);
                             }
@@ -582,6 +575,47 @@ export default function SurahReader() {
                     </div>
                   </div>
                 </div>
+                );
+              })()}
+
+              {/* ── VERSE TAB: full-width number grid for current surah ── */}
+              {sidebarTab === 'verse' && (() => {
+                const activeSurah = navSurah ?? surahsList.find(s => s.number === num);
+                const count = activeSurah?.number === num ? (data?.ayahs?.length ?? 0) : (activeSurah?.numberOfAyahs ?? 0);
+                return (
+                  <div className="p-4">
+                    {activeSurah && (
+                      <p className="text-[12px] font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
+                        {activeSurah.englishName} · {count} verses
+                      </p>
+                    )}
+                    <div className="grid grid-cols-5 gap-2">
+                      {Array.from({ length: count }, (_, i) => i + 1).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => {
+                            if (!activeSurah || activeSurah.number === num) {
+                              setIsSidebarOpen(false);
+                              setTimeout(() => {
+                                const el = document.querySelector(`[data-ayah-row="${v}"]`);
+                                if (el) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  el.classList.add('bg-primary/10');
+                                  setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+                                }
+                              }, 100);
+                            } else {
+                              setIsSidebarOpen(false);
+                              navigate(`/quran/${activeSurah.number}#ayah=${v}`);
+                            }
+                          }}
+                          className="aspect-square flex items-center justify-center rounded-lg border border-border/50 bg-accent/20 text-[13px] font-medium text-foreground hover:bg-[#178b50]/15 hover:border-[#178b50]/50 hover:text-[#178b50] transition-all"
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 );
               })()}
 
