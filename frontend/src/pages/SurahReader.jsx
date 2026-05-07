@@ -1013,7 +1013,7 @@ export default function SurahReader() {
 
             {/* Top Header (Static, disappears on scroll) */}
             <div className="-mt-4 sm:-mt-8 mb-4 relative">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3 sm:mb-0.5">
                 <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-1 text-lg sm:text-xl font-bold text-foreground hover:text-primary transition-colors focus:outline-none tracking-tight">
                   {data.number}. {data.englishName} <ChevronDown className="h-4 w-4 text-muted-foreground opacity-70 ml-2" />
                 </button>
