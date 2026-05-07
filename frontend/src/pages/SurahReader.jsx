@@ -113,6 +113,8 @@ export default function SurahReader() {
   const audioRef = useRef(null);
   const bismillahPlayedRef = useRef(false);
   const mixRef = useRef(audioMix); // for closures in playback chain
+  const currentIdxRef = useRef(-1);  // mirrors currentIdx for use inside callbacks
+  const pausedIdxRef = useRef(-1);   // saved position when user pauses
   
   // Surah Info Modal
   const [isSurahInfoOpen, setIsSurahInfoOpen] = useState(false);
@@ -126,6 +128,10 @@ export default function SurahReader() {
   const [audioProgress, setAudioProgress] = useState({ currentTime: 0, duration: 0 });
   const [isAudioMenuOpen, setIsAudioMenuOpen] = useState(false);
   const [isAudioPlayerVisible, setIsAudioPlayerVisible] = useState(false);
+  const [audioMenuPanel, setAudioMenuPanel] = useState(null); // null | 'repeat' | 'speed' | 'experience'
+  const [playbackSpeed, setPlaybackSpeed] = useState(() => parseFloat(localStorage.getItem('deenguide:speed') || '1'));
+  const [repeatMode, setRepeatMode] = useState(() => localStorage.getItem('deenguide:repeat') || 'off'); // 'off' | 'one' | 'all'
+  const [volume, setVolume] = useState(() => parseFloat(localStorage.getItem('deenguide:volume') || '1'));
 
   useEffect(() => {
     mixRef.current = audioMix;
@@ -264,7 +270,12 @@ export default function SurahReader() {
   }, [tafsirEditions, tafsirEdition]);
 
   // ── playback chain ────────────────────────────────────────────────────────
-  const stopPlayback = useCallback(() => {
+  const stopPlayback = useCallback((savePausedPosition = false) => {
+    if (savePausedPosition) {
+      pausedIdxRef.current = currentIdxRef.current;
+    } else {
+      pausedIdxRef.current = -1;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.onended = null;
@@ -274,6 +285,7 @@ export default function SurahReader() {
     tts.stop();
     setPlaying(false);
     setCurrentIdx(-1);
+    currentIdxRef.current = -1;
   }, [tts]);
 
   const speakAsync = useCallback((text, lang) =>
@@ -303,6 +315,8 @@ export default function SurahReader() {
         audioRef.current = null;
       }
       const a = new Audio(url);
+      a.playbackRate = parseFloat(localStorage.getItem('deenguide:speed') || '1');
+      a.volume = parseFloat(localStorage.getItem('deenguide:volume') || '1');
       a.onended = () => resolve(true);
       a.onerror = () => resolve(false);
       
@@ -353,11 +367,19 @@ export default function SurahReader() {
 
   const playFromIndex = useCallback((idx) => {
     if (!data || idx < 0 || idx >= data.ayahs.length) {
-      stopPlayback();
+      // Handle repeat modes when reaching end
+      const repeat = localStorage.getItem('deenguide:repeat') || 'off';
+      if (repeat === 'all') {
+        bismillahPlayedRef.current = false;
+        playFromIndex(0);
+      } else {
+        stopPlayback();
+      }
       return;
     }
     const ayah = data.ayahs[idx];
     setCurrentIdx(idx);
+    currentIdxRef.current = idx;
     setPlaying(true);
     setIsAudioPlayerVisible(true);
     const el = document.querySelector(`[data-ayah-row="${ayah.number}"]`);
@@ -380,7 +402,10 @@ export default function SurahReader() {
           await speakAsync(text, tafsirLang);
         }
       }
-      playFromIndex(idx + 1);
+      // Handle repeat-one
+      const repeat = localStorage.getItem('deenguide:repeat') || 'off';
+      if (repeat === 'one') playFromIndex(idx);
+      else playFromIndex(idx + 1);
     };
 
     const playArabicThenChain = async () => {
@@ -408,20 +433,70 @@ export default function SurahReader() {
   }, [data, stopPlayback, speakAsync, playAudioAsync, translationAudioUrl, translationLang, tafsirLang, tafsir, fetchAyahTafsir, reciters]);
 
   const togglePlayAll = () => {
-    if (playing) stopPlayback();
-    else {
+    if (playing) {
+      setPlaying(false);
+      if (audioRef.current) audioRef.current.pause();
+      window.speechSynthesis.pause();
+    } else {
       if (!audioMix.recite && !audioMix.translate && !audioMix.tafsir) {
         toast.error("Enable at least one audio option (Recite / Translate / Tafsir)");
         return;
       }
-      bismillahPlayedRef.current = false;
-      playFromIndex(0);
+      if (currentIdxRef.current !== -1) {
+        setPlaying(true);
+        if (audioRef.current) audioRef.current.play();
+        window.speechSynthesis.resume();
+      } else {
+        bismillahPlayedRef.current = false;
+        playFromIndex(0);
+      }
     }
   };
 
+  // Download current ayah audio
+  const handleDownload = () => {
+    const ayah = data?.ayahs[currentIdx >= 0 ? currentIdx : 0];
+    const url = ayah?.audio;
+    if (!url) { toast.error("No audio available to download"); return; }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${data.englishName}-ayah-${ayah.number}.mp3`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success(`Downloading ${data.englishName} Ayah ${ayah.number}`);
+    setIsAudioMenuOpen(false);
+  };
+
+  const handleSpeedChange = (speed) => {
+    setPlaybackSpeed(speed);
+    localStorage.setItem('deenguide:speed', String(speed));
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  };
+
+  const handleVolumeChange = (vol) => {
+    setVolume(vol);
+    localStorage.setItem('deenguide:volume', String(vol));
+    if (audioRef.current) audioRef.current.volume = vol;
+  };
+
+  const cycleRepeat = (mode) => {
+    setRepeatMode(mode);
+    localStorage.setItem('deenguide:repeat', mode);
+  };
+
   const playSingle = (idx) => {
-    if (currentIdx === idx && playing) stopPlayback();
-    else {
+    if (currentIdx === idx && playing) {
+      setPlaying(false);
+      if (audioRef.current) audioRef.current.pause();
+      window.speechSynthesis.pause();
+    } else if (currentIdx === idx && !playing) {
+      setPlaying(true);
+      if (audioRef.current) audioRef.current.play();
+      window.speechSynthesis.resume();
+    } else {
+      stopPlayback();
       bismillahPlayedRef.current = true;
       playFromIndex(idx);
     }
@@ -937,10 +1012,10 @@ export default function SurahReader() {
             </div>
 
             {/* Top Header (Static, disappears on scroll) */}
-            <div className="pt-6 mb-12 relative">
+            <div className="-mt-4 sm:-mt-8 mb-4 relative">
               <div className="flex items-center justify-between mb-6">
-                <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-1 text-2xl sm:text-[28px] font-bold text-foreground hover:text-primary transition-colors focus:outline-none tracking-tight">
-                  {data.number}. {data.englishName} <ChevronDown className="h-5 w-5 text-muted-foreground opacity-70 ml-2" />
+                <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-1 text-lg sm:text-xl font-bold text-foreground hover:text-primary transition-colors focus:outline-none tracking-tight">
+                  {data.number}. {data.englishName} <ChevronDown className="h-4 w-4 text-muted-foreground opacity-70 ml-2" />
                 </button>
                 <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 text-muted-foreground hover:bg-accent/50 rounded-full transition-colors">
                   <Settings className="h-6 w-6" />
@@ -966,7 +1041,7 @@ export default function SurahReader() {
 
 
           {/* Secondary Controls Bar */}
-          <div className="flex flex-col items-center gap-6 mb-12">
+          <div className="flex flex-col items-center gap-6 mb-6">
             <div className="flex items-center justify-center gap-1 sm:gap-2 bg-accent/20 border border-border/50 rounded-full p-1 text-[13px] font-bold">
               <button 
                 onClick={togglePlayAll} 
@@ -1045,16 +1120,16 @@ export default function SurahReader() {
           </div>
 
           {/* Surah Title Header */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-10 mb-10">
-            <h1 className="font-arabic text-[64px] sm:text-[80px] leading-none text-foreground drop-shadow-sm" dir="rtl">
+          <div className="flex items-center justify-center gap-3 mb-1">
+            <h1 className="font-arabic text-[42px] sm:text-[64px] leading-none text-foreground drop-shadow-sm" dir="rtl">
               {data.name}
             </h1>
-            <div className="flex flex-col items-start gap-0 border-l-2 border-border/50 pl-6">
-              <div className="flex items-center gap-2">
-                <span className="text-[22px] font-bold text-foreground">{data.number}. {data.englishName}</span>
-                <button onClick={openSurahInfo} className="rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer border border-primary/20">INFO</button>
+            <div className="flex flex-col items-start gap-1 mt-2">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{data.number}. {data.englishName}</span>
+                <button onClick={openSurahInfo} className="rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer border border-primary/20 mt-1">INFO</button>
               </div>
-              <p className="text-[17px] text-muted-foreground font-medium">{data.englishNameTranslation}</p>
+              <p className="text-lg text-muted-foreground font-medium">{data.englishNameTranslation}</p>
             </div>
           </div>
 
@@ -1062,7 +1137,7 @@ export default function SurahReader() {
 
           {/* Bismillah Header (if not Surah 1 or 9) */}
           {data.number !== 1 && data.number !== 9 && (
-            <div className="mb-14 text-center">
+            <div className="mb-8 mt-3 text-center">
               <img 
                 src="/bismillah.svg" 
                 alt="Bismillah" 
@@ -1076,7 +1151,7 @@ export default function SurahReader() {
 
           {/* Ayahs Rendering */}
           {viewMode === "verse" ? (
-            <div className="space-y-12">
+            <div className="space-y-12 mt-4">
               {data.ayahs.map((a, idx) => {
                 const bkId = `${data.number}:${a.number}`;
                 const saved = isBookmarked("ayahs", bkId);
@@ -1416,27 +1491,105 @@ export default function SurahReader() {
                 {/* Audio Menu Dropdown */}
                 {isAudioMenuOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsAudioMenuOpen(false)} />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-[240px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] py-2 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
-                      <button className="w-full flex items-center gap-3 px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
-                        <Download className="h-4 w-4 text-muted-foreground" /> Download
-                      </button>
-                      <button className="w-full flex items-center gap-3 px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
-                        <RefreshCw className="h-4 w-4 text-muted-foreground" /> Manage repeat settings
-                      </button>
-                      <div className="my-1 border-t border-border/40" />
-                      <button className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center gap-3"><Zap className="h-4 w-4 text-muted-foreground" /> Experience</div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center gap-3"><span className="text-[12px] font-bold text-muted-foreground ml-1 w-3">1x</span> Speed</div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button onClick={() => { setIsAudioMenuOpen(false); setIsSettingsOpen(true); setTimeout(() => setSettingsTab('audio'), 100); }} className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center gap-3"><User className="h-4 w-4 text-muted-foreground" /> Reciter</div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </button>
+                    <div className="fixed inset-0 z-40" onClick={() => { setIsAudioMenuOpen(false); setAudioMenuPanel(null); }} />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-[260px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.18)] overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+
+                      {/* ── Main Menu ── */}
+                      {!audioMenuPanel && (
+                        <div className="py-2">
+                          {/* Download */}
+                          <button onClick={handleDownload} className="w-full flex items-center gap-3 px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
+                            <Download className="h-4 w-4 text-muted-foreground" /> Download
+                          </button>
+                          {/* Repeat */}
+                          <button onClick={() => setAudioMenuPanel('repeat')} className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center gap-3"><RefreshCw className="h-4 w-4 text-muted-foreground" /> Manage repeat settings</div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[12px] font-semibold text-primary capitalize">{repeatMode === 'off' ? '' : repeatMode === 'one' ? '1' : '∞'}</span>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </button>
+                          <div className="my-1 border-t border-border/40" />
+                          {/* Experience (Volume) */}
+                          <button onClick={() => setAudioMenuPanel('experience')} className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center gap-3"><Zap className="h-4 w-4 text-muted-foreground" /> Experience</div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                          {/* Speed */}
+                          <button onClick={() => setAudioMenuPanel('speed')} className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center gap-3"><span className="text-[13px] font-bold text-muted-foreground w-4">{playbackSpeed}x</span> Speed</div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                          {/* Reciter */}
+                          <button onClick={() => { setIsAudioMenuOpen(false); setAudioMenuPanel(null); setIsSettingsOpen(true); setTimeout(() => setSettingsTab('arabic'), 100); }} className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-foreground hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center gap-3"><User className="h-4 w-4 text-muted-foreground" /> Reciter</div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* ── Repeat Sub-Panel ── */}
+                      {audioMenuPanel === 'repeat' && (
+                        <div className="py-2">
+                          <div className="flex items-center gap-2 px-4 py-2 border-b border-border/40 mb-1">
+                            <button onClick={() => setAudioMenuPanel(null)} className="p-1 rounded hover:bg-accent"><ChevronRight className="h-4 w-4 rotate-180 text-muted-foreground" /></button>
+                            <span className="text-[14px] font-bold">Repeat Settings</span>
+                          </div>
+                          {[['off', 'No Repeat', 'Play once and stop'], ['one', 'Repeat Ayah', 'Loop current ayah'], ['all', 'Repeat Surah', 'Loop entire surah']].map(([mode, label, desc]) => (
+                            <button key={mode} onClick={() => cycleRepeat(mode)} className={`w-full flex items-center justify-between px-4 py-3 text-[14px] transition-colors ${repeatMode === mode ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent/50'}`}>
+                              <div>
+                                <div className="font-semibold text-left">{label}</div>
+                                <div className="text-[12px] text-muted-foreground text-left">{desc}</div>
+                              </div>
+                              {repeatMode === mode && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* ── Speed Sub-Panel ── */}
+                      {audioMenuPanel === 'speed' && (
+                        <div className="py-2">
+                          <div className="flex items-center gap-2 px-4 py-2 border-b border-border/40 mb-1">
+                            <button onClick={() => setAudioMenuPanel(null)} className="p-1 rounded hover:bg-accent"><ChevronRight className="h-4 w-4 rotate-180 text-muted-foreground" /></button>
+                            <span className="text-[14px] font-bold">Playback Speed</span>
+                          </div>
+                          {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
+                            <button key={speed} onClick={() => handleSpeedChange(speed)} className={`w-full flex items-center justify-between px-4 py-3 text-[14px] transition-colors ${playbackSpeed === speed ? 'bg-primary/10 text-primary font-bold' : 'text-foreground hover:bg-accent/50'}`}>
+                              <span>{speed === 1 ? 'Normal (1x)' : `${speed}x`}</span>
+                              {playbackSpeed === speed && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* ── Experience (Volume) Sub-Panel ── */}
+                      {audioMenuPanel === 'experience' && (
+                        <div className="py-2">
+                          <div className="flex items-center gap-2 px-4 py-2 border-b border-border/40 mb-1">
+                            <button onClick={() => setAudioMenuPanel(null)} className="p-1 rounded hover:bg-accent"><ChevronRight className="h-4 w-4 rotate-180 text-muted-foreground" /></button>
+                            <span className="text-[14px] font-bold">Experience</span>
+                          </div>
+                          <div className="px-5 py-4 space-y-5">
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[13px] font-semibold text-foreground flex items-center gap-2"><Volume2 className="h-4 w-4" /> Volume</span>
+                                <span className="text-[13px] font-bold text-primary">{Math.round(volume * 100)}%</span>
+                              </div>
+                              <input
+                                type="range" min="0" max="1" step="0.05"
+                                value={volume}
+                                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                                className="w-full accent-primary h-1.5 rounded-full cursor-pointer"
+                              />
+                              <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
+                                <span>0%</span><span>50%</span><span>100%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </>
                 )}
