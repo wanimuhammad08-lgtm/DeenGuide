@@ -444,7 +444,7 @@ export default function SurahReader() {
       }
       if (currentIdxRef.current !== -1) {
         setPlaying(true);
-        if (audioRef.current) audioRef.current.play();
+        if (audioRef.current) audioRef.current.play().catch(() => {});
         window.speechSynthesis.resume();
       } else {
         bismillahPlayedRef.current = false;
@@ -493,7 +493,7 @@ export default function SurahReader() {
       window.speechSynthesis.pause();
     } else if (currentIdx === idx && !playing) {
       setPlaying(true);
-      if (audioRef.current) audioRef.current.play();
+      if (audioRef.current) audioRef.current.play().catch(() => {});
       window.speechSynthesis.resume();
     } else {
       stopPlayback();
@@ -1492,7 +1492,7 @@ export default function SurahReader() {
                 {isAudioMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => { setIsAudioMenuOpen(false); setAudioMenuPanel(null); }} />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-[260px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.18)] overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                    <div className="absolute bottom-full left-0 mb-4 w-[260px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.18)] overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-200 origin-bottom-left">
 
                       {/* ── Main Menu ── */}
                       {!audioMenuPanel && (
