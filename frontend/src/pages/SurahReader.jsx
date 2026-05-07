@@ -1013,7 +1013,7 @@ export default function SurahReader() {
 
             {/* Top Header (Static, disappears on scroll) */}
             <div className="-mt-4 sm:-mt-8 mb-4 relative">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-2">
                 <button onClick={() => setIsSidebarOpen(true)} className="flex items-center gap-1 text-lg sm:text-xl font-bold text-foreground hover:text-primary transition-colors focus:outline-none tracking-tight">
                   {data.number}. {data.englishName} <ChevronDown className="h-4 w-4 text-muted-foreground opacity-70 ml-2" />
                 </button>
@@ -1022,7 +1022,7 @@ export default function SurahReader() {
                 </button>
               </div>
               
-              <div className="flex border-b border-border/40 text-[15px] font-bold relative">
+              <div className="flex border-b border-border/40 text-[13px] font-bold relative">
                 <button 
                   onClick={() => setViewMode("verse")} 
                   className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors border-b-[3px] -mb-[1.5px] ${viewMode === "verse" ? "text-[#178b50] border-[#178b50]" : "text-muted-foreground border-transparent hover:text-foreground"}`}
@@ -1120,16 +1120,16 @@ export default function SurahReader() {
           </div>
 
           {/* Surah Title Header */}
-          <div className="flex items-center justify-center gap-3 mb-1">
-            <h1 className="font-arabic text-[42px] sm:text-[64px] leading-none text-foreground drop-shadow-sm" dir="rtl">
+          <div className="flex items-center justify-center gap-8 mb-10 sm:mb-16">
+            <h1 className="font-arabic text-[48px] sm:text-[64px] leading-none text-foreground drop-shadow-sm" dir="rtl">
               {data.name}
             </h1>
-            <div className="flex flex-col items-start gap-1 mt-2">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{data.number}. {data.englishName}</span>
-                <button onClick={openSurahInfo} className="rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer border border-primary/20 mt-1">INFO</button>
+            <div className="flex flex-col items-start gap-[2px]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[20px] sm:text-[22px] font-medium text-foreground">{data.number}. {data.englishName}</span>
+                <button onClick={openSurahInfo} className="rounded-full bg-[#35b5a7] hover:bg-[#2b968a] text-white px-[8px] py-[1px] text-[11px] font-medium lowercase transition-colors cursor-pointer">info</button>
               </div>
-              <p className="text-lg text-muted-foreground font-medium">{data.englishNameTranslation}</p>
+              <p className="text-[15px] sm:text-[16px] text-[#7a818c] font-normal">{data.englishNameTranslation}</p>
             </div>
           </div>
 
