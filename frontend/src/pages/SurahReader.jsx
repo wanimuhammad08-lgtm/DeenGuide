@@ -13,6 +13,7 @@ import { useTTS } from "@/lib/tts";
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 const RECITER_KEY = "deenguide:v4-reciter";
@@ -558,8 +559,9 @@ export default function SurahReader() {
   const getTranslationFontSize = () => `${19 + (fontSize - 3) * 2}px`;
 
   return (
-    <>
-      {/* Sidebar Drawer */}
+    <TooltipProvider>
+      <>
+        {/* Sidebar Drawer */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
@@ -1481,12 +1483,17 @@ export default function SurahReader() {
             {/* Main Controls */}
             <div className="flex items-center gap-6 sm:gap-10">
               <div className="relative">
-                <button 
-                  onClick={() => setIsAudioMenuOpen(!isAudioMenuOpen)} 
-                  className="p-2 text-foreground hover:bg-accent rounded-full transition-colors"
-                >
-                  <MoreHorizontal className="h-5 w-5" />
-                </button>
+<Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={() => setIsAudioMenuOpen(!isAudioMenuOpen)} 
+                    className="p-2 text-foreground hover:bg-accent rounded-full transition-colors"
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Options</TooltipContent>
+              </Tooltip>
                 
                 {/* Audio Menu Dropdown */}
                 {isAudioMenuOpen && (
@@ -1595,40 +1602,68 @@ export default function SurahReader() {
                 )}
               </div>
               
-              <button className="p-2 text-foreground hover:bg-accent rounded-full transition-colors hidden sm:block">
-                <Volume2 className="h-5 w-5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={() => setAudioMenuPanel('experience')}
+                    className="p-2 text-foreground hover:bg-accent rounded-full transition-colors hidden sm:block"
+                  >
+                    <Volume2 className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Volume</TooltipContent>
+              </Tooltip>
               
-              <button 
-                onClick={() => { if (currentIdx > 0) playFromIndex(currentIdx - 1); }} 
-                className="p-2 text-foreground hover:bg-accent rounded-full transition-colors"
-              >
-                <Rewind className="h-6 w-6 fill-current" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={() => { if (currentIdx > 0) playFromIndex(currentIdx - 1); }} 
+                    className="p-2 text-foreground hover:bg-accent rounded-full transition-colors"
+                  >
+                    <Rewind className="h-6 w-6 fill-current" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Previous Ayah</TooltipContent>
+              </Tooltip>
               
-              <button 
-                onClick={togglePlayAll} 
-                className="p-3 text-foreground hover:bg-accent rounded-full transition-colors"
-              >
-                {playing ? <Pause className="h-8 w-8 fill-current" /> : <Play className="h-8 w-8 fill-current" />}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={togglePlayAll} 
+                    className="p-3 text-foreground hover:bg-accent rounded-full transition-colors"
+                  >
+                    {playing ? <Pause className="h-8 w-8 fill-current" /> : <Play className="h-8 w-8 fill-current" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">{playing ? 'Pause' : 'Play'}</TooltipContent>
+              </Tooltip>
               
-              <button 
-                onClick={() => { if (data && currentIdx < data.ayahs.length - 1) playFromIndex(currentIdx + 1); }} 
-                className="p-2 text-foreground hover:bg-accent rounded-full transition-colors"
-              >
-                <FastForward className="h-6 w-6 fill-current" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={() => { if (data && currentIdx < data.ayahs.length - 1) playFromIndex(currentIdx + 1); }} 
+                    className="p-2 text-foreground hover:bg-accent rounded-full transition-colors"
+                  >
+                    <FastForward className="h-6 w-6 fill-current" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Next Ayah</TooltipContent>
+              </Tooltip>
               
-              <button 
-                onClick={() => {
-                  stopPlayback();
-                  setIsAudioPlayerVisible(false);
-                }} 
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={() => {
+                      stopPlayback();
+                      setIsAudioPlayerVisible(false);
+                    }} 
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Close Player</TooltipContent>
+              </Tooltip>
             </div>
 
             {/* Total Duration */}
@@ -1645,6 +1680,7 @@ export default function SurahReader() {
       )}
     </div>
     </>
+    </TooltipProvider>
   );
 }
 
