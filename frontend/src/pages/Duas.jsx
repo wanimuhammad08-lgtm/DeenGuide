@@ -1,159 +1,235 @@
-import { useEffect, useState } from "react";
-import { ChevronDown, Loader2, Bookmark, BookmarkCheck, Copy, Share2, Sun, Moon, Plane, Heart, Wind, Sprout, Hand, Users, Sparkles, MapPin, Trash2, Droplets, User, Home, Shirt, Utensils, Scale, Star, Shield, Cloud, Clock, Banknote, Book, Trees, Handshake, Compass } from "lucide-react";
-import { duas } from "@/lib/api";
-import { useBookmarks } from "@/lib/bookmarks";
-import { AuthenticityBadge } from "@/components/AuthenticityBadge";
-import { toast } from "sonner";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, ChevronDown, ChevronUp, Loader2, X } from "lucide-react";
+import * as Icons from "lucide-react";
+import { duas as duasApi } from "@/lib/api";
 
-const iconMap = { 
-  Sun, Moon, Plane, Heart, Wind, Sprout, Hand, Users, Sparkles, MapPin, 
-  Trash: Trash2, Droplet: Droplets, User, Home, Shirt, Utensils, Scale, 
-  Star, Shield, Cloud, Clock, Banknote, Book, Tree: Trees, Handshake, Compass 
+const SECTION_ORDER = ["Daily", "Azkar", "Worship", "Other Occasions"];
+
+const DynIcon = ({ name, size = 20 }) => {
+  const Comp = Icons[name] || Icons.BookOpen;
+  return <Comp size={size} strokeWidth={1.5} />;
 };
 
 export default function Duas() {
-  const [categories, setCategories] = useState([]);
-  const [allDuas, setAllDuas] = useState([]);
-  const [open, setOpen] = useState(null);
+  const [sections, setSections] = useState({});
   const [loading, setLoading] = useState(true);
-  const { toggle, isBookmarked } = useBookmarks();
+  const [expanded, setExpanded] = useState(null);
+  const [topicLists, setTopicLists] = useState({});
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [allCats, setAllCats] = useState([]);
+  const searchRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([duas.categories(), duas.list()])
-      .then(([c, d]) => {
-        setCategories(c);
-        setAllDuas(d);
-        setOpen(null); // Keep all categories closed by default
-      })
-      .finally(() => setLoading(false));
+    duasApi.categories().then((cats) => {
+      setAllCats(cats);
+      const grouped = {};
+      cats.forEach((cat) => {
+        const s = cat.section || "Other Occasions";
+        if (!grouped[s]) grouped[s] = [];
+        grouped[s].push(cat);
+      });
+      setSections(grouped);
+    }).finally(() => setLoading(false));
   }, []);
 
-  const copyDua = (d) => {
-    const text = `${d.title}\n\n${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}`;
-    navigator.clipboard?.writeText(text);
-    toast.success("Dua copied");
-  };
+  useEffect(() => {
+    if (showSearch) searchRef.current?.focus();
+    else { setSearchResults([]); setSearchQuery(""); }
+  }, [showSearch]);
 
-  const shareDua = async (d) => {
-    const text = `${d.title}\n${d.translation}\n— ${d.reference}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: d.title, text });
-      } catch {}
-    } else {
-      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(url, "_blank");
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchQuery.trim().length >= 2) {
+        setSearching(true);
+        duasApi.search(searchQuery).then(setSearchResults).finally(() => setSearching(false));
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const handleToggle = async (catId) => {
+    if (expanded === catId) { setExpanded(null); return; }
+    setExpanded(catId);
+    if (!topicLists[catId]) {
+      const data = await duasApi.category(catId);
+      setTopicLists((prev) => ({ ...prev, [catId]: data.topics || [] }));
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "60vh" }}>
+        <Loader2 size={28} className="animate-spin" style={{ color: "#06b6d4" }} />
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Duas Library</p>
-        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">Supplications</h1>
+    <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
+      {/* Page Header (Matching Ask AI) */}
+      <div className="relative mb-6">
+        <button 
+          onClick={() => setShowSearch(v => !v)} 
+          style={{ position: "absolute", right: 0, top: 4, background: "none", border: "none", cursor: "pointer", color: "var(--foreground)" }}
+        >
+          {showSearch ? <X size={22} /> : <Search size={22} />}
+        </button>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          DAILY SUPPLICATIONS
+        </p>
+        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
+          Duas &amp; Dhikr
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-          Authentic duas from the Qur'an and Sunnah, organized by life situations.
+          Authentic supplications from the Quran and Sunnah, organized by category for daily remembrance and protection.
         </p>
       </div>
 
-      {loading ? (
-        <div className="grid place-items-center py-16 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-10">
-          {Object.entries(
-            categories.reduce((acc, cat) => {
-              const g = cat.group || "Other";
-              if (!acc[g]) acc[g] = [];
-              acc[g].push(cat);
-              return acc;
-            }, {})
-          ).map(([groupName, groupCategories]) => (
-            <div key={groupName} className="space-y-4">
-              <h2 className="font-heading text-lg font-bold tracking-tight text-foreground">{groupName}</h2>
-              <div className="space-y-3">
-                {groupCategories.map((cat) => {
-                  const items = allDuas.filter((d) => d.category === cat.slug);
-                  const Icon = iconMap[cat.icon] || Sparkles;
-                  const isOpen = open === cat.slug;
-                  return (
-                    <div
-                      key={cat.slug}
-                      data-testid={`dua-category-${cat.slug}`}
-                      className={`overflow-hidden rounded-2xl border bg-card transition-all ${isOpen ? "border-primary/40" : "border-border"}`}
-                    >
-                      <button
-                        data-testid={`dua-cat-trigger-${cat.slug}`}
-                        onClick={() => setOpen(isOpen ? null : cat.slug)}
-                        className="flex w-full items-center gap-4 px-5 py-4 text-left"
-                      >
-                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground">
-                          <Icon className="h-5 w-5" strokeWidth={2.2} />
-                        </span>
-                        <div className="flex-1">
-                          <h3 className="font-heading text-base font-semibold">{cat.name}</h3>
-                          <p className="text-xs text-muted-foreground">{items.length} dua{items.length !== 1 && "s"} {cat.description ? `· ${cat.description}` : ""}</p>
-                        </div>
-                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                      </button>
-                      {isOpen && (
-                        <div className="space-y-3 border-t border-border bg-muted/30 p-4 sm:p-5">
-                          {items.length === 0 ? (
-                            <p className="text-center text-sm text-muted-foreground py-4">No duas currently available in this category.</p>
-                          ) : (
-                            items.map((d) => {
-                              const saved = isBookmarked("duas", d.id);
-                              return (
-                                <div key={d.id} data-testid={`dua-${d.id}`} className="rounded-xl border border-border bg-card p-5">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <h4 className="font-heading text-base font-semibold">{d.title}</h4>
-                                    <AuthenticityBadge level={d.authenticity} />
-                                  </div>
-                                  <p dir="rtl" className="mt-4 text-right font-arabic text-2xl leading-[2.2] text-foreground">
-                                    {d.arabic}
-                                  </p>
-                                  <p className="mt-2 text-xs italic text-muted-foreground">{d.transliteration}</p>
-                                  <p className="mt-2 text-sm leading-relaxed text-foreground">{d.translation}</p>
-                                  {d.meaning && (
-                                    <p className="mt-2 text-xs text-muted-foreground"><span className="font-semibold">Meaning:</span> {d.meaning}</p>
-                                  )}
-                                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                                    <span className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Reference:</span> {d.reference}</span>
-                                    <div className="flex items-center gap-1.5">
-                                      <button data-testid={`copy-dua-${d.id}`} onClick={() => copyDua(d)} className="grid h-8 w-8 place-items-center rounded-full border border-border bg-background hover:bg-accent" aria-label="Copy">
-                                        <Copy className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button data-testid={`share-dua-${d.id}`} onClick={() => shareDua(d)} className="grid h-8 w-8 place-items-center rounded-full border border-border bg-background hover:bg-accent" aria-label="Share">
-                                        <Share2 className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        data-testid={`bookmark-dua-${d.id}`}
-                                        onClick={() => {
-                                          toggle("duas", d);
-                                          toast.success(saved ? "Removed bookmark" : "Dua saved");
-                                        }}
-                                        className="grid h-8 w-8 place-items-center rounded-full border border-border bg-background hover:bg-accent"
-                                        aria-label="Bookmark"
-                                      >
-                                        {saved ? <BookmarkCheck className="h-3.5 w-3.5 text-primary" /> : <Bookmark className="h-3.5 w-3.5" />}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+      {/* Search */}
+      {showSearch && (
+        <div style={{ padding: "10px 16px", background: "var(--card)", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ position: "relative" }}>
+            <Search size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} />
+            <input
+              ref={searchRef}
+              placeholder="Search duas and topics..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%", boxSizing: "border-box", padding: "10px 14px 10px 36px",
+                borderRadius: "22px", border: "1px solid var(--border)",
+                background: "var(--muted)", fontSize: "15px", color: "var(--foreground)", outline: "none"
+              }}
+            />
+          </div>
+          {searching && <div style={{ textAlign: "center", paddingTop: 10 }}><Loader2 size={16} className="animate-spin" style={{ color: "#9ca3af" }} /></div>}
+          {searchResults.length > 0 && (
+            <div style={{ marginTop: 8, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--card)" }}>
+              {searchResults.slice(0, 10).map((r, i) => (
+                <button key={i}
+                  onClick={() => navigate(`/duas/topic/${r.type === "topic" ? r.id : r.topic_id}`)}
+                  style={{
+                    width: "100%", display: "flex", flexDirection: "column", alignItems: "flex-start",
+                    padding: "11px 16px", background: "none", border: "none",
+                    borderBottom: i < searchResults.length - 1 ? "1px solid var(--border)" : "none",
+                    cursor: "pointer", textAlign: "left"
+                  }}
+                >
+                  <span style={{ fontSize: "14px", fontWeight: "500", color: "var(--foreground)" }}>{r.title}</span>
+                  <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: 2 }}>{r.type === "topic" ? "Topic" : "Dua match"}</span>
+                </button>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
+
+      {/* Sections */}
+      <div style={{ paddingBottom: 32 }}>
+        {SECTION_ORDER.filter(s => sections[s]?.length > 0).map(sectionName => (
+          <div key={sectionName} style={{ marginBottom: 24 }}>
+            {/* Section label */}
+            <p className="font-heading" style={{ margin: "0 0 12px 4px", fontSize: "18px", fontBold: "700", color: "var(--foreground)" }}>
+              {sectionName}
+            </p>
+
+            {/* Category cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {sections[sectionName].map(cat => {
+                const isOpen = expanded === cat.id;
+                const topics = topicLists[cat.id] || [];
+                const totalDuas = topics.reduce((acc, t) => acc + (t.dua_count || 0), 0);
+
+                return (
+                  <div key={cat.id} style={{
+                    borderRadius: 16, overflow: "hidden",
+                    background: "var(--card)",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+                    border: "1px solid rgba(0,0,0,0.05)"
+                  }}>
+                    {/* Card row */}
+                    <button
+                      onClick={() => handleToggle(cat.id)}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center",
+                        padding: "14px 16px", gap: 14,
+                        background: "none", border: "none", cursor: "pointer", textAlign: "left"
+                      }}
+                    >
+                      {/* Teal icon circle */}
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                        background: "rgba(20,184,166,0.12)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#0d9488"
+                      }}>
+                        <DynIcon name={cat.icon} size={22} />
+                      </div>
+
+                      {/* Text */}
+                      <div style={{ flex: 1 }}>
+                        <p className="font-heading" style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "var(--foreground)" }}>
+                          {cat.title}
+                        </p>
+                        <p style={{ margin: "2px 0 0", fontSize: "14px", color: "var(--muted-foreground)" }}>
+                          {cat.topic_count} {cat.topic_count === 1 ? "topic" : "topics"}
+                        </p>
+                      </div>
+
+                      {/* Chevron */}
+                      {isOpen
+                        ? <ChevronUp size={18} style={{ color: "#9ca3af", flexShrink: 0 }} />
+                        : <ChevronDown size={18} style={{ color: "#9ca3af", flexShrink: 0 }} />}
+                    </button>
+
+                    {/* Topics list (expanded) */}
+                    {isOpen && (
+                      <div style={{ borderTop: "1px solid var(--border)", background: "#fafafa" }}>
+                        {topics.length === 0
+                          ? <div style={{ padding: "16px", textAlign: "center" }}>
+                              <Loader2 size={18} className="animate-spin" style={{ color: "#0d9488" }} />
+                            </div>
+                          : topics.map((topic, ti) => (
+                            <button
+                              key={topic.id}
+                              onClick={() => navigate(`/duas/topic/${topic.id}`)}
+                              style={{
+                                width: "100%", display: "flex", alignItems: "center",
+                                padding: "13px 16px 13px 20px",
+                                background: "none", border: "none",
+                                borderBottom: ti < topics.length - 1 ? "1px solid var(--border)" : "none",
+                                cursor: "pointer", textAlign: "left", gap: 10
+                              }}
+                            >
+                              <div style={{
+                                width: 6, height: 6, borderRadius: "50%",
+                                background: "#0d9488", flexShrink: 0
+                              }} />
+                              <span className="font-heading" style={{ flex: 1, fontSize: "15px", color: "var(--foreground)", fontWeight: "600" }}>
+                                {topic.title}
+                              </span>
+                              <span style={{ fontSize: "12px", color: "#9ca3af", flexShrink: 0 }}>
+                                {topic.dua_count} duas
+                              </span>
+                            </button>
+                          ))
+                        }
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

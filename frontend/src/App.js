@@ -10,6 +10,7 @@ import Quran from "@/pages/Quran";
 import SurahReader from "@/pages/SurahReader";
 import Hadith from "@/pages/Hadith";
 import Duas from "@/pages/Duas";
+import DuaCategory from "@/pages/DuaCategory";
 import Bookmarks from "@/pages/Bookmarks";
 import PrayerTimes from "@/pages/PrayerTimes";
 import MonthlyTimetable from "@/pages/MonthlyTimetable";
@@ -49,6 +50,7 @@ function App() {
               <Route path="/quran/:number" element={<SurahReader />} />
               <Route path="/hadith" element={<Hadith />} />
               <Route path="/duas" element={<Duas />} />
+              <Route path="/duas/topic/:topicId" element={<DuaCategory />} />
               <Route path="/bookmarks" element={<Bookmarks />} />
               <Route path="/prayer-times" element={<PrayerTimes />} />
               <Route path="/prayer-times/monthly" element={<MonthlyTimetable />} />

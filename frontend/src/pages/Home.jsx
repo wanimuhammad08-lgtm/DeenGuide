@@ -289,9 +289,9 @@ export default function Home() {
   const sunsetEnd = times?.maghrib?.time || "--:--";
 
   return (
-    <div style={{ background: "#FAF6F0", minHeight: "100vh" }} className="pb-24">
+    <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
       {/* Header */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+      <div className="pt-4 pb-2 flex items-center justify-between">
         <div>
           <div style={{ fontFamily: "Amiri Quran, serif", fontSize: 28, color: "#1B4D3E", lineHeight: 1.2 }}>
             السلام عليكم
@@ -308,7 +308,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="px-4 space-y-4">
+      <div className="space-y-4">
         {/* Prayer Time Card */}
         <div style={{
           background: "linear-gradient(135deg, #F5C47A 0%, #E8A952 60%, #D4943A 100%)",

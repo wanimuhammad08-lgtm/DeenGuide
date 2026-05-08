@@ -464,16 +464,16 @@ export default function PrayerTimes() {
   }
 
   return (
-    <div className="mx-auto max-w-lg pb-24 px-4">
-      {/* Page Header */}
+    <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
+      {/* Page Header (Matching Ask AI) */}
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Daily Worship
         </p>
-        <h1 className="font-heading text-2xl font-bold tracking-tight">
+        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
           Prayer Times
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
           Accurate daily prayer timings based on your location and calculation method.
         </p>
       </div>

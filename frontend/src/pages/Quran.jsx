@@ -131,11 +131,11 @@ export default function Quran() {
   return (
     <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
       
-      {/* Page Header */}
-      <div className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">THE NOBLE QUR'AN</p>
-        <h1 className="mt-1 font-heading text-[32px] font-bold text-slate-800 dark:text-slate-100 tracking-tight sm:text-4xl">114 Surahs</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground sm:text-base max-w-lg">
+      {/* Page Header (Matching Ask AI) */}
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">THE NOBLE QUR'AN</p>
+        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">114 Surahs</h1>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
           Beautiful Arabic, multiple translations, Tafsir Ibn Kathir, audio recitation, and bookmarks.
         </p>
       </div>

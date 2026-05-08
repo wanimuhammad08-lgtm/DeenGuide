@@ -75,7 +75,7 @@ export default function Ask() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI Assistant</p>
         <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">

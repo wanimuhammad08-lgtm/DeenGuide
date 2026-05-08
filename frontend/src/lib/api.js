@@ -1,8 +1,8 @@
 import axios from "axios";
 
-// Use REACT_APP_BACKEND_URL from .env or deployment environment. 
-// For live production, set this variable to your API domain (e.g., https://api.deenguide.com)
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8001";
+// Zero-config: Automatically use live backend when not on localhost
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 
+  (window.location.hostname === "localhost" ? "http://localhost:8001" : "https://deenguide.onrender.com");
 export const API = `${BACKEND_URL}/api`;
 
 const http = axios.create({ baseURL: API, timeout: 60000 });
@@ -36,6 +36,9 @@ export const hadith = {
 
 export const duas = {
   categories: () => http.get("/duas/categories").then((r) => r.data),
-  list: (category) =>
-    http.get("/duas", { params: category ? { category } : {} }).then((r) => r.data),
+  category: (id) => http.get(`/duas/category/${id}`).then((r) => r.data),
+  topic: (id) => http.get(`/duas/topic/${id}`).then((r) => r.data),
+  search: (q) => http.get("/duas/search", { params: { q } }).then((r) => r.data),
+  detail: (id) => http.get(`/duas/${id}`).then((r) => r.data),
+  bookmarks: () => http.get("/duas/bookmarks").then((r) => r.data),
 };

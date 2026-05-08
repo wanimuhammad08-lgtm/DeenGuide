@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Query
-from dotenv import load_dotenv
+from dotenv import load_dotenv # Triggering reload for new dua data
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -19,6 +19,11 @@ from groq import Groq
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
+from services.hadith_service import HadithService
+from services.dua_service import dua_service
+hadith_service = HadithService()
+
+
 # ── DB ────────────────────────────────────────────────────────────────────────
 mongo_url = os.environ.get("MONGO_URL", "")
 if mongo_url:
@@ -32,8 +37,6 @@ else:
 
 # ── Static Data ───────────────────────────────────────────────────────────────
 DATA_DIR = ROOT_DIR / "data"
-with open(DATA_DIR / "duas.json", "r", encoding="utf-8") as f:
-    DUAS_DATA = json.load(f)
 with open(DATA_DIR / "hadiths.json", "r", encoding="utf-8") as f:
     HADITHS_DATA = json.load(f)
 
@@ -69,12 +72,6 @@ HADITH_V2_BOOKS: Dict[str, Dict[str, Any]] = {
     "nasai": {"name": "Sunan an-Nasa'i", "name_ar": "سنن النسائي", "compiler": "Imam an-Nasa'i", "default_grade": None, "color": "#34D399", "source": "fawazahmed0"},
     "ibnmajah": {"name": "Sunan Ibn Majah", "name_ar": "سنن ابن ماجه", "compiler": "Imam Ibn Majah", "default_grade": None, "color": "#A78BFA", "source": "fawazahmed0"},
     "malik": {"name": "Muwatta Imam Malik", "name_ar": "موطأ الإمام مالك", "compiler": "Imam Malik", "default_grade": None, "color": "#F472B6", "source": "fawazahmed0"},
-    "ahmad": {"name": "Musnad Ahmad", "name_ar": "مسند أحمد", "compiler": "Imam Ahmad ibn Hanbal", "default_grade": None, "color": "#D4A574", "source": "ahmedbaset", "filename": "ahmed", "note": "Subset of the 10 Promised Paradise (~1,374). Full Musnad (~27,000) available only in Arabic."},
-    "riyad_assalihin": {"name": "Riyad as-Salihin", "name_ar": "رياض الصالحين", "compiler": "Imam an-Nawawi", "default_grade": "Authentic", "color": "#22D3EE", "source": "ahmedbaset_other", "filename": "riyad_assalihin"},
-    "bulugh_almaram": {"name": "Bulugh al-Maram", "name_ar": "بلوغ المرام", "compiler": "Hafiz Ibn Hajar al-Asqalani", "default_grade": None, "color": "#F59E0B", "source": "ahmedbaset_other", "filename": "bulugh_almaram"},
-    "mishkat_almasabih": {"name": "Mishkat al-Masabih", "name_ar": "مشكاة المصابيح", "compiler": "Al-Khatib at-Tabrizi", "default_grade": None, "color": "#8B5CF6", "source": "ahmedbaset_other", "filename": "mishkat_almasabih"},
-    "aladab_almufrad": {"name": "Al-Adab Al-Mufrad", "name_ar": "الأدب المفرد", "compiler": "Imam al-Bukhari", "default_grade": None, "color": "#10B981", "source": "ahmedbaset_other", "filename": "aladab_almufrad"},
-    "shamail_muhammadiyah": {"name": "Shama'il Muhammadiyyah", "name_ar": "الشمائل المحمدية", "compiler": "Imam at-Tirmidhi", "default_grade": None, "color": "#F43F5E", "source": "ahmedbaset_other", "filename": "shamail_muhammadiyah"},
 }
 _hadith_v2_cache: Dict[str, List[Dict[str, Any]]] = {}
 _hadith_v2_chapters: Dict[str, List[Dict[str, Any]]] = {}  # slug -> [{number, title, first, last, count}]
@@ -384,7 +381,9 @@ def retrieve_hadiths_v2(question: str, limit: int = 8) -> List[Dict[str, Any]]:
 
     q_lower = question.lower()
     scored: List[tuple] = []
-    for slug, items in _hadith_v2_cache.items():
+    # Use a list snapshot to avoid 'dictionary changed size during iteration'
+    # errors if background loading is still happening.
+    for slug, items in list(_hadith_v2_cache.items()):
         for h in items:
             text = (h.get("english") or "").lower()
             if not text:
@@ -441,11 +440,17 @@ def retrieve_duas(question: str, limit: int = 3) -> List[Dict[str, Any]]:
     if not keywords:
         return []
     scored = []
-    for d in DUAS_DATA["duas"]:
-        haystack = " ".join([d["title"], d["translation"], d["meaning"], d["category"]])
+    # Use the live verified duas from dua_service
+    for dua in dua_service.duas.values():
+        topic = dua_service.topics.get(dua["topic_id"])
+        topic_title = topic["title"] if topic else ""
+        # Search in title and translation
+        haystack = f"{topic_title} {dua['translation']}".lower()
         score = keyword_score(haystack, keywords)
         if score > 0:
-            scored.append((score, d))
+            d_copy = dict(dua)
+            d_copy["title"] = topic_title
+            scored.append((score, d_copy))
     scored.sort(key=lambda x: -x[0])
     return [d for _, d in scored[:limit]]
 
@@ -675,6 +680,11 @@ async def ai_ask(req: AskRequest):
 
 
 # ── Quran ──
+@api.get("/hadith/search")
+async def hadith_search(q: str, page: int = 1, per_page: int = 20):
+    return hadith_service.search(q, page=page, per_page=per_page)
+
+
 @api.get("/quran/surahs")
 async def quran_surahs():
     if "list" in _surah_cache:
@@ -1228,24 +1238,38 @@ async def hadith_v2_detail(book: str, number: int):
 
 # ── Duas ──
 @api.get("/duas/categories")
-async def duas_categories():
-    return DUAS_DATA["categories"]
+async def get_dua_categories():
+    return dua_service.get_categories()
 
+@api.get("/duas/category/{id}")
+async def get_dua_category(id: str):
+    cat = dua_service.get_category(id)
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return cat
 
-@api.get("/duas")
-async def duas_list(category: Optional[str] = None):
-    items = DUAS_DATA["duas"]
-    if category:
-        items = [d for d in items if d["category"] == category]
-    return items
+@api.get("/duas/topic/{id}")
+async def get_dua_topic(id: str):
+    topic = dua_service.get_topic(id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return topic
 
+@api.get("/duas/search")
+async def search_duas(q: str = Query("", min_length=1)):
+    return dua_service.search(q)
 
-@api.get("/duas/{dua_id}")
-async def dua_detail(dua_id: str):
-    for d in DUAS_DATA["duas"]:
-        if d["id"] == dua_id:
-            return d
-    raise HTTPException(status_code=404, detail="Dua not found")
+@api.get("/duas/{id}")
+async def get_dua_detail(id: str):
+    dua = dua_service.get_dua(id)
+    if not dua:
+        raise HTTPException(status_code=404, detail="Dua not found")
+    return dua
+
+@api.get("/duas/bookmarks")
+async def get_dua_bookmarks():
+    # Placeholder for future cloud sync
+    return []
 
 
 # ── Mount ──
@@ -1288,4 +1312,5 @@ async def shutdown_db_client():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)
