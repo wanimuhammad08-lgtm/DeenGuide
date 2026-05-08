@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "http://localhost:8001";
 export const API = `${BACKEND_URL}/api`;
 
 const http = axios.create({ baseURL: API, timeout: 60000 });
