@@ -211,7 +211,7 @@ export default function Home() {
   const { current, next } = useMemo(() => {
     if (!times) return { current: null, next: null };
     return getCurrentPrayer(times);
-  }, [times]);
+  }, [times, now]);
 
   // Geolocation
   useEffect(() => {
@@ -266,7 +266,7 @@ export default function Home() {
     const total = nextPrayer.ms - currentPrayer.ms;
     const elapsed = Date.now() - currentPrayer.ms;
     return Math.min(100, Math.max(0, (elapsed / total) * 100));
-  }, [currentPrayer, nextPrayer]);
+  }, [now, currentPrayer, nextPrayer]);
 
   // Special times
   const suhurEnd = times?.fajr?.time || "--:--";
