@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Layout } from "@/components/Layout";
+import { AIProvider } from "@/context/AIContext";
 import Home from "@/pages/Home";
 import Ask from "@/pages/Ask";
 import Quran from "@/pages/Quran";
@@ -38,34 +39,36 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/ask" element={<Ask />} />
-            <Route path="/quran" element={<Quran />} />
-            <Route path="/quran/:number" element={<SurahReader />} />
-            <Route path="/hadith" element={<Hadith />} />
-            <Route path="/duas" element={<Duas />} />
-            <Route path="/bookmarks" element={<Bookmarks />} />
-            <Route path="/prayer-times" element={<PrayerTimes />} />
-            <Route path="/prayer-times/monthly" element={<MonthlyTimetable />} />
-            <Route path="/more" element={<More />} />
-            <Route path="/more/qibla" element={<QiblaDirection />} />
-            <Route path="/more/calendar" element={<IslamicCalendar />} />
-            <Route path="/more/names-of-allah" element={<NamesOfAllah />} />
-            <Route path="/more/menstrual-guide" element={<MenstrualGuide />} />
-            <Route path="/more/hajj-guide" element={<HajjGuide />} />
-            <Route path="/more/umrah-guide" element={<UmrahGuide />} />
-            <Route path="/more/date-converter" element={<DateConverter />} />
-            <Route path="/more/zakat" element={<ZakatCalculator />} />
-            <Route path="/more/settings" element={<AppSettings />} />
-            <Route path="/more/help" element={<Help />} />
-            <Route path="/more/profile" element={<UserProfile />} />
-          </Route>
-          {/* Tasbih is fullscreen, no layout */}
-          <Route path="/more/tasbih" element={<TasbihCounter />} />
-        </Routes>
+        <AIProvider>
+          <ScrollToTop />
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/ask" element={<Ask />} />
+              <Route path="/quran" element={<Quran />} />
+              <Route path="/quran/:number" element={<SurahReader />} />
+              <Route path="/hadith" element={<Hadith />} />
+              <Route path="/duas" element={<Duas />} />
+              <Route path="/bookmarks" element={<Bookmarks />} />
+              <Route path="/prayer-times" element={<PrayerTimes />} />
+              <Route path="/prayer-times/monthly" element={<MonthlyTimetable />} />
+              <Route path="/more" element={<More />} />
+              <Route path="/more/qibla" element={<QiblaDirection />} />
+              <Route path="/more/calendar" element={<IslamicCalendar />} />
+              <Route path="/more/names-of-allah" element={<NamesOfAllah />} />
+              <Route path="/more/menstrual-guide" element={<MenstrualGuide />} />
+              <Route path="/more/hajj-guide" element={<HajjGuide />} />
+              <Route path="/more/umrah-guide" element={<UmrahGuide />} />
+              <Route path="/more/date-converter" element={<DateConverter />} />
+              <Route path="/more/zakat" element={<ZakatCalculator />} />
+              <Route path="/more/settings" element={<AppSettings />} />
+              <Route path="/more/help" element={<Help />} />
+              <Route path="/more/profile" element={<UserProfile />} />
+            </Route>
+            {/* Tasbih is fullscreen, no layout */}
+            <Route path="/more/tasbih" element={<TasbihCounter />} />
+          </Routes>
+        </AIProvider>
       </BrowserRouter>
       <Toaster richColors position="top-center" />
     </div>

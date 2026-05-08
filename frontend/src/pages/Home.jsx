@@ -211,7 +211,7 @@ export default function Home() {
   const { current, next } = useMemo(() => {
     if (!times) return { current: null, next: null };
     return getCurrentPrayer(times);
-  }, [times, now]);
+  }, [times]);
 
   // Geolocation
   useEffect(() => {
@@ -266,7 +266,7 @@ export default function Home() {
     const total = nextPrayer.ms - currentPrayer.ms;
     const elapsed = Date.now() - currentPrayer.ms;
     return Math.min(100, Math.max(0, (elapsed / total) * 100));
-  }, [now, currentPrayer, nextPrayer]);
+  }, [currentPrayer, nextPrayer]);
 
   // Special times
   const suhurEnd = times?.fajr?.time || "--:--";
@@ -505,16 +505,7 @@ export default function Home() {
           <p style={{ fontSize:12, color:"#6B7280", marginTop:8, fontWeight:500 }}>{DAILY_DUAS[duaIdx].ref}</p>
         </div>
 
-        {/* Ask AI Banner */}
-        <Link to="/ask" style={{
-          display:"block", background:"linear-gradient(135deg,#1B4D3E,#2BAE96)",
-          borderRadius:16, padding:"16px 20px", textDecoration:"none",
-          boxShadow:"0 4px 15px rgba(27,77,62,0.25)"
-        }}>
-          <div style={{ fontSize:12, color:"rgba(255,255,255,0.8)", fontWeight:500 }}>Powered by AI</div>
-          <div style={{ fontSize:17, color:"#fff", fontWeight:700, marginTop:4 }}>Have an Islamic question?</div>
-          <div style={{ fontSize:13, color:"rgba(255,255,255,0.85)", marginTop:4 }}>Get answers from Quran & authentic Hadith →</div>
-        </Link>
+
       </div>
     </div>
   );

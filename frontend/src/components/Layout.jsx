@@ -1,13 +1,14 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Home, BookOpen, Hand, Bookmark, LayoutGrid, Menu, X, Sparkles, Clock } from "lucide-react";
+import { Home, BookOpen, Hand, Bookmark, LayoutGrid, Menu, X, Sparkles, Clock, ScrollText } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home, testid: "nav-home", exact: true },
+  { to: "/ask", label: "Ask AI", icon: Sparkles, testid: "nav-ask" },
   { to: "/quran", label: "Quran", icon: BookOpen, testid: "nav-quran" },
+  { to: "/hadith", label: "Hadith", icon: ScrollText, testid: "nav-hadith" },
   { to: "/duas", label: "Dua", icon: Hand, testid: "nav-duas" },
-  { to: "/bookmarks", label: "Bookmarks", icon: Bookmark, testid: "nav-bookmarks" },
   { to: "/more", label: "More", icon: LayoutGrid, testid: "nav-more" },
 ];
 
@@ -96,7 +97,7 @@ export const Layout = () => {
 
       {/* Bottom mobile nav */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-7xl grid-cols-5">
+        <div className="mx-auto grid max-w-7xl grid-cols-6">
           {navItems.map((n) => (
             <NavLink
               key={n.to}

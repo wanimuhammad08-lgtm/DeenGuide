@@ -4,6 +4,7 @@ import { ai } from "@/lib/api";
 import { useBookmarks } from "@/lib/bookmarks";
 import { useTTS } from "@/lib/tts";
 import { AuthenticityBadge } from "@/components/AuthenticityBadge";
+import { useAI } from "@/context/AIContext";
 import { toast } from "sonner";
 
 const collectionLabels = {
@@ -29,8 +30,7 @@ const sampleQuestions = [
 
 export default function Ask() {
   const [question, setQuestion] = useState("");
-  const [history, setHistory] = useState([]); // {q, a, error}
-  const [loading, setLoading] = useState(false);
+  const { history, loading, ask } = useAI();
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
   const endRef = useRef(null);
@@ -41,30 +41,11 @@ export default function Ask() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, loading]);
 
-  const submit = async (q) => {
+  const handleSubmit = async (q) => {
     const text = (q ?? question).trim();
     if (!text || loading) return;
     setQuestion("");
-    setHistory((h) => [...h, { q: text }]);
-    setLoading(true);
-    try {
-      const data = await ai.ask({ question: text });
-      setHistory((h) => {
-        const copy = [...h];
-        copy[copy.length - 1] = { q: text, a: data };
-        return copy;
-      });
-    } catch (e) {
-      const msg = e?.response?.data?.detail || e.message || "Something went wrong";
-      setHistory((h) => {
-        const copy = [...h];
-        copy[copy.length - 1] = { q: text, error: msg };
-        return copy;
-      });
-      toast.error("Failed to get an answer", { description: msg });
-    } finally {
-      setLoading(false);
-    }
+    ask(text);
   };
 
   const startVoice = () => {
@@ -105,8 +86,6 @@ export default function Ask() {
         </p>
       </div>
 
-
-
       {/* Conversation */}
       {history.length === 0 && !loading && (
         <div className="mb-6 rounded-3xl border border-border bg-card p-6 sm:p-8">
@@ -115,8 +94,7 @@ export default function Ask() {
             {sampleQuestions.map((s) => (
               <button
                 key={s}
-                data-testid={`sample-q-${s.slice(0, 10).replace(/\s/g, "-")}`}
-                onClick={() => submit(s)}
+                onClick={() => handleSubmit(s)}
                 className="rounded-full border border-border bg-background px-4 py-2 text-xs font-medium text-foreground transition-all hover:border-primary/40 hover:bg-accent"
               >
                 {s}
@@ -130,7 +108,7 @@ export default function Ask() {
         {history.map((entry, i) => (
           <div key={i} className="space-y-4">
             <div className="flex justify-end">
-              <div data-testid={`question-bubble-${i}`} className="max-w-[85%] rounded-3xl rounded-br-md bg-primary px-5 py-3 text-sm text-primary-foreground shadow-sm">
+              <div className="max-w-[85%] rounded-3xl rounded-br-md bg-primary px-5 py-3 text-sm text-primary-foreground shadow-sm">
                 {entry.q}
               </div>
             </div>
@@ -158,13 +136,12 @@ export default function Ask() {
         <div className="rounded-3xl border border-border bg-card p-2 shadow-lg">
           <div className="flex items-end gap-2">
             <textarea
-              data-testid="ask-input"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  submit();
+                  handleSubmit();
                 }
               }}
               rows={1}
@@ -172,21 +149,17 @@ export default function Ask() {
               className="flex-1 resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
             />
             <button
-              data-testid="ask-voice-btn"
               onClick={listening ? stopVoice : startVoice}
               className={`grid h-11 w-11 place-items-center rounded-2xl transition-all active:scale-95 ${
                 listening ? "bg-destructive text-destructive-foreground" : "bg-accent text-accent-foreground hover:bg-accent/70"
               }`}
-              aria-label="Voice"
             >
               {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </button>
             <button
-              data-testid="ask-submit-btn"
-              onClick={() => submit()}
+              onClick={() => handleSubmit()}
               disabled={!question.trim() || loading}
               className="grid h-11 w-11 place-items-center rounded-2xl bg-primary text-primary-foreground transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40"
-              aria-label="Send"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
@@ -196,6 +169,7 @@ export default function Ask() {
     </div>
   );
 }
+
 
 const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
   const saved = isBookmarked("answers", data.id);

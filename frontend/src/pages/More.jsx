@@ -2,14 +2,13 @@ import { Link } from "react-router-dom";
 import {
   Compass, RotateCcw, Calendar, Star, Heart, MapPin, Plane,
   ArrowLeftRight, Calculator, Settings, HelpCircle, User, Bookmark,
-  ScrollText, ChevronRight,
+  ScrollText, ChevronRight, Hand,
 } from "lucide-react";
 
 const sections = [
   {
     title: "Islamic Tools",
     items: [
-      { to: "/hadith", label: "Hadith Search", desc: "Search authentic hadith collections", icon: ScrollText, color: "bg-purple-600" },
       { to: "/more/qibla", label: "Qibla Direction", desc: "Find the direction of Ka'bah", icon: Compass, color: "bg-emerald-500" },
       { to: "/more/tasbih", label: "Tasbih Counter", desc: "Digital dhikr counter", icon: RotateCcw, color: "bg-indigo-500" },
       { to: "/more/calendar", label: "Islamic Calendar", desc: "Hijri dates & events", icon: Calendar, color: "bg-red-500" },
