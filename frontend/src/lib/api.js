@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || (window.location.hostname === "localhost" ? "http://localhost:8001" : window.location.origin);
+// Use REACT_APP_BACKEND_URL from .env or deployment environment. 
+// For live production, set this variable to your API domain (e.g., https://api.deenguide.com)
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8001";
 export const API = `${BACKEND_URL}/api`;
 
 const http = axios.create({ baseURL: API, timeout: 60000 });
