@@ -1,13 +1,21 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Sparkles, BookOpen, ScrollText, Hand, Clock, LayoutGrid, Menu, X } from "lucide-react";
+import { Home, BookOpen, Hand, Bookmark, LayoutGrid, Menu, X, Sparkles, Clock } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
 const navItems = [
+  { to: "/", label: "Home", icon: Home, testid: "nav-home", exact: true },
+  { to: "/quran", label: "Quran", icon: BookOpen, testid: "nav-quran" },
+  { to: "/duas", label: "Dua", icon: Hand, testid: "nav-duas" },
+  { to: "/bookmarks", label: "Bookmarks", icon: Bookmark, testid: "nav-bookmarks" },
+  { to: "/more", label: "More", icon: LayoutGrid, testid: "nav-more" },
+];
+
+const desktopNavItems = [
   { to: "/ask", label: "Ask AI", icon: Sparkles, testid: "nav-ask" },
   { to: "/quran", label: "Quran", icon: BookOpen, testid: "nav-quran" },
   { to: "/prayer-times", label: "Prayer", icon: Clock, testid: "nav-prayer" },
-  { to: "/duas", label: "Duas", icon: Hand, testid: "nav-duas" },
+  { to: "/duas", label: "Dua", icon: Hand, testid: "nav-duas" },
   { to: "/more", label: "More", icon: LayoutGrid, testid: "nav-more" },
 ];
 
@@ -30,7 +38,7 @@ export const Layout = () => {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
           <Brand />
           <nav className="hidden items-center gap-1 md:flex">
-            {navItems.map((n) => (
+            {desktopNavItems.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
@@ -93,6 +101,7 @@ export const Layout = () => {
             <NavLink
               key={n.to}
               to={n.to}
+              end={n.exact}
               data-testid={`${n.testid}-bottom`}
               className={({ isActive }) =>
                 `flex flex-col items-center gap-0.5 px-2 py-2.5 text-[10px] font-medium ${
