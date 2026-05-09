@@ -56,6 +56,7 @@ export default function TafsirModal({
     if (isOpen && ayahNumber && surahNumber) {
       fetchTafsir();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, ayahNumber, surahNumber, activeEdition]);
 
   const fetchTafsir = async () => {

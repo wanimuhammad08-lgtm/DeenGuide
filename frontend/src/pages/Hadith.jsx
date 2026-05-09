@@ -53,6 +53,7 @@ export default function Hadith() {
         .then((d) => setGlobalData(d))
         .finally(() => setGlobalLoading(false));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
