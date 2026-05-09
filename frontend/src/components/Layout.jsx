@@ -91,7 +91,7 @@ export const Layout = () => {
         )}
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-8 sm:pb-12 sm:pt-10">
+      <main className="mx-auto max-w-7xl px-4 pb-24 pt-3 sm:px-8 sm:pb-12 sm:pt-6">
         <Outlet />
       </main>
 

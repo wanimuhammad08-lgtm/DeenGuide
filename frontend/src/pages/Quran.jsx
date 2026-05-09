@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Search, Loader2, ChevronDown, BookOpen, Headphones, 
-  ChevronRight, Layers, Calendar, Star, Bookmark, BookmarkCheck 
+  ChevronRight, Layers, Calendar, Star, Bookmark, BookmarkCheck, X
 } from "lucide-react";
 import { quran } from "@/lib/api";
 import { useBookmarks } from "@/lib/bookmarks";
@@ -44,6 +44,8 @@ export default function Quran() {
   const [lastSeen, setLastSeen] = useState(null);
   const [lastAudio, setLastAudio] = useState(null);
   const [favorites, setFavorites] = useState([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const navigate = useNavigate();
 
   useBookmarks();
 
@@ -58,6 +60,12 @@ export default function Quran() {
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
   }, []);
+
+  useEffect(() => {
+    if (!showSearch) {
+      setQ("");
+    }
+  }, [showSearch]);
 
   const refreshLocal = () => {
     try {
@@ -92,7 +100,7 @@ export default function Quran() {
         (s) =>
           s.englishName.toLowerCase().includes(t) ||
           s.englishNameTranslation.toLowerCase().includes(t) ||
-          String(s.number) === t
+          String(s.number).includes(t)
       );
     }
 
@@ -132,12 +140,22 @@ export default function Quran() {
     <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
       
       {/* Page Header (Matching Ask AI) */}
-      <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">THE NOBLE QUR'AN</p>
-        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">114 Surahs</h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-          Beautiful Arabic, multiple translations, Tafsir Ibn Kathir, audio recitation, and bookmarks.
-        </p>
+      <div className="relative mb-6">
+        <button 
+          onClick={() => setShowSearch(v => !v)} 
+          className="absolute right-0 top-1 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showSearch ? <X className="h-6 w-6" /> : <Search className="h-6 w-6" />}
+        </button>
+        <div className="pr-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">THE NOBLE QUR'AN</p>
+          <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
+            {filteredSurahs.length} Surah{filteredSurahs.length !== 1 ? "s" : ""}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+            Beautiful Arabic, multiple translations, Tafsir Ibn Kathir, audio recitation, and bookmarks.
+          </p>
+        </div>
       </div>
 
 
@@ -160,11 +178,12 @@ export default function Quran() {
       </div>
 
       {/* Search Bar */}
-      {tab !== "juz" && (
-        <div className="relative mb-6">
+      {showSearch && tab !== "juz" && (
+        <div className="relative mb-6 animate-in slide-in-from-top-2 fade-in duration-200 z-20">
           <Search className="pointer-events-none absolute left-5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
           <input
             value={q}
+            autoFocus
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search surahs..."
             className="w-full rounded-2xl border border-border/80 bg-card py-4 pl-12 pr-5 text-[15px] shadow-sm outline-none transition-colors focus:border-[#178b50]/50 focus:ring-2 focus:ring-[#178b50]/10"

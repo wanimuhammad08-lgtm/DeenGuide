@@ -10,6 +10,8 @@ import { quran } from "@/lib/api";
 import { qurancom } from "@/lib/qurancom";
 import { useBookmarks } from "@/lib/bookmarks";
 import { useTTS } from "@/lib/tts";
+import TafsirModal from "@/components/quran/TafsirModal";
+import SettingsSidebar from "@/components/quran/SettingsSidebar";
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -29,6 +31,16 @@ const LANG_TO_BCP47 = {
 
 const DEFAULT_MIX = { recite: true, translate: false, tafsir: false };
 
+const POPULAR_FALLBACK = [
+  { id: 131, author_name: "Dr. Mustafa Khattab", name: "The Clear Quran" },
+  { id: 20, author_name: "Saheeh International", name: "Saheeh International" },
+  { id: 85, author_name: "Muhsin Khan", name: "Muhsin Khan" },
+  { id: 95, author_name: "Maududi", name: "Tafhim-ul-Quran" },
+  { id: 14, author_name: "Yusuf Ali", name: "Yusuf Ali" },
+  { id: 57, author_name: "Transliteration", name: "Transliteration" },
+  { id: 97, author_name: "Pickthall", name: "Pickthall" }
+];
+
 export default function SurahReader() {
   const { number } = useParams();
   const navigate = useNavigate();
@@ -46,7 +58,7 @@ export default function SurahReader() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showTajweedLegend, setShowTajweedLegend] = useState(false);
-  const [settingsTab, setSettingsTab] = useState("wbw");
+  const [settingsTab, setSettingsTab] = useState("display");
   const [surahsList, setSurahsList] = useState([]);
   const [isTranslationSelectorOpen, setIsTranslationSelectorOpen] = useState(false);
   const [translationSearch, setTranslationSearch] = useState("");
@@ -72,23 +84,38 @@ export default function SurahReader() {
   const [editions, setEditions] = useState([]);
   const [tafsirEditions, setTafsirEditions] = useState([]);
 
-  const [reciter, setReciter] = useState(() => parseInt(localStorage.getItem(RECITER_KEY) || "7", 10));
+  const [reciter, setReciter] = useState(() => {
+    const val = parseInt(localStorage.getItem(RECITER_KEY) || "7", 10);
+    return isNaN(val) ? 7 : val;
+  });
   const [translationEditions, setTranslationEditions] = useState(() => {
     try { 
       const val = JSON.parse(localStorage.getItem(TRANSLATION_KEY));
-      if (Array.isArray(val)) return val;
-      if (typeof val === 'number' || typeof val === 'string') return [parseInt(val, 10)];
-      return [131];
+      let ids = [];
+      if (Array.isArray(val)) ids = val.map(v => parseInt(v, 10)).filter(v => !isNaN(v));
+      else if (val && (typeof val === 'number' || typeof val === 'string')) ids = [parseInt(val, 10)];
+      else ids = [131];
+      
+      // Deduplicate
+      return [...new Set(ids)];
     }
     catch { return [131]; }
   });
   const [tafsirEdition, setTafsirEdition] = useState(() => localStorage.getItem(TAFSIR_KEY) || "en-tafisr-ibn-kathir");
 
   const [wbwSettings, setWbwSettings] = useState(() => {
+    const defaults = { 
+      translation: true, 
+      transliteration: false,
+      onClick: 'recitation',
+      hoverTranslation: false,
+      hoverTransliteration: false,
+      language: 'en'
+    };
     try {
-      return { ...{ translation: true, transliteration: false }, ...JSON.parse(localStorage.getItem('deenguide:wbw') || '{}') };
+      return { ...defaults, ...JSON.parse(localStorage.getItem('deenguide:wbw') || '{}') };
     } catch {
-      return { translation: true, transliteration: false };
+      return defaults;
     }
   });
 
@@ -139,6 +166,8 @@ export default function SurahReader() {
   const [playbackSpeed, setPlaybackSpeed] = useState(() => parseFloat(localStorage.getItem('deenguide:speed') || '1'));
   const [repeatMode, setRepeatMode] = useState(() => localStorage.getItem('deenguide:repeat') || 'off'); // 'off' | 'one' | 'all'
   const [volume, setVolume] = useState(() => parseFloat(localStorage.getItem('deenguide:volume') || '1'));
+  const [theme, setTheme] = useState(() => localStorage.getItem('deenguide:theme') || 'light');
+  const [translationFontSize, setTranslationFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:translation-font-size') || '3'));
   // Quran.com-style repeat settings
   const [repeatTab, setRepeatTab] = useState(() => localStorage.getItem('deenguide:repeat-tab') || 'single');
   const [repeatPlayRange, setRepeatPlayRange] = useState(() => parseInt(localStorage.getItem('deenguide:repeat-play-range') || '2', 10));
@@ -157,6 +186,39 @@ export default function SurahReader() {
   useEffect(() => {
     autoScrollRef.current = autoScroll;
   }, [autoScroll]);
+
+  useEffect(() => {
+    document.documentElement.classList.remove('light', 'dark', 'sepia');
+    document.documentElement.classList.add(theme);
+    if (theme === 'sepia') {
+      document.body.style.backgroundColor = '#f4ecd8';
+      document.body.style.color = '#5b4636';
+    } else {
+      document.body.style.backgroundColor = '';
+      document.body.style.color = '';
+    }
+  }, [theme]);
+
+  const onUpdateSetting = (key, value) => {
+    switch(key) {
+      case 'fontSize': setFontSize(value); localStorage.setItem('deenguide:font-size', value); break;
+      case 'translationFontSize': setTranslationFontSize(value); localStorage.setItem('deenguide:translation-font-size', value); break;
+      case 'arabicScript': setArabicScript(value); localStorage.setItem('deenguide:script', value); break;
+      case 'autoScroll': setAutoScroll(value); localStorage.setItem('deenguide:auto-scroll', String(value)); break;
+      case 'reciter': setReciter(value); localStorage.setItem(RECITER_KEY, value); break;
+      case 'translationEditions': {
+        const cleaned = [...new Set(Array.isArray(value) ? value.map(v => parseInt(v, 10)).filter(v => !isNaN(v)) : [parseInt(value, 10)])];
+        setTranslationEditions(cleaned); 
+        localStorage.setItem(TRANSLATION_KEY, JSON.stringify(cleaned)); 
+        break;
+      }
+      case 'volume': setVolume(value); localStorage.setItem('deenguide:volume', value); break;
+      case 'playbackSpeed': setPlaybackSpeed(value); localStorage.setItem('deenguide:speed', value); break;
+      case 'theme': setTheme(value); localStorage.setItem('deenguide:theme', value); break;
+      case 'wbwSettings': setWbwSettings(value); localStorage.setItem('deenguide:wbw', JSON.stringify(value)); break;
+      default: break;
+    }
+  };
 
   // tafsir per ayah: { [ayahNumber]: { open: bool, text: string, loading: bool } }
   const [tafsir, setTafsir] = useState({});
@@ -218,6 +280,9 @@ export default function SurahReader() {
           name: chapter.name,
           englishName: chapter.englishName,
           englishNameTranslation: chapter.englishNameTranslation,
+          revelationType: chapter.revelationType,
+          revelationOrder: chapter.revelationOrder,
+          versesCount: chapter.versesCount,
           bismillah_pre: chapter.bismillah_pre,
           ayahs: verses.map(v => ({
             id: v.id,
@@ -522,12 +587,14 @@ export default function SurahReader() {
     localStorage.setItem(RECITER_KEY, val);
   };
   const handleTranslationChange = (val) => {
-    setTranslationEdition(val);
-    localStorage.setItem(TRANSLATION_KEY, val);
+    setTranslationEditions(val);
+    localStorage.setItem(TRANSLATION_KEY, JSON.stringify(val));
   };
 
   const num = parseInt(number, 10);
-  const selectedTranslation = editions.find((e) => e.id === translationEditions[0]);
+  const primaryId = Number(translationEditions[0]);
+  const selectedTranslation = editions.find((e) => Number(e.id) === primaryId) 
+    || POPULAR_FALLBACK.find((e) => Number(e.id) === primaryId);
   
   // Minimal juz mapping approximation for UI display
   const getJuzNum = (surahNum) => {
@@ -581,16 +648,16 @@ export default function SurahReader() {
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
           <div className="relative w-[320px] max-w-[85vw] h-full bg-card border-r border-border shadow-2xl flex flex-col">
             <div className="p-4 border-b border-border/40 flex items-center justify-between">
-              <Link to="/quran" className="flex items-center gap-2 font-bold text-foreground hover:text-[#178b50]">
-                <ArrowLeft className="h-4 w-4" /> All Surahs
+              <Link to="/quran" className="flex items-center gap-3 font-bold text-foreground text-[16px] hover:text-[#178b50]">
+                <ArrowLeft className="h-5 w-5" /> All Surahs
               </Link>
               <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-accent rounded-full text-muted-foreground hover:text-foreground transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
             
-            <div className="px-4 pt-3 pb-0 border-b border-border/40">
-              <div className="flex gap-4 text-[14px] font-semibold mb-0">
+            <div className="px-4 pt-4 pb-0 border-b border-border/40">
+              <div className="flex gap-6 text-[14px] font-semibold mb-0">
                 <button onClick={() => setSidebarTab('surah')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'surah' || sidebarTab === 'verse' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Surah</button>
                 <button onClick={() => setSidebarTab('verse')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'verse' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Verse</button>
                 <button onClick={() => setSidebarTab('juz')} className={`pb-3 border-b-2 transition-all ${sidebarTab === 'juz' ? 'border-[#178b50] text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Juz</button>
@@ -602,13 +669,13 @@ export default function SurahReader() {
               {/* ── SURAH TAB: full-width surah list ── */}
               {sidebarTab === 'surah' && (
                 <div className="flex flex-col" style={{ height: 'calc(100vh - 160px)' }}>
-                  <div className="p-3 shrink-0">
+                  <div className="p-4 shrink-0">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <input
                         type="text"
                         placeholder="Search Surah"
-                        className="w-full bg-accent/20 border border-border/40 rounded-lg pl-8 pr-3 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-[#178b50]"
+                        className="w-full bg-background border border-border/60 rounded-full pl-10 pr-4 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-[#178b50] transition-shadow placeholder:text-muted-foreground/70"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
@@ -622,13 +689,13 @@ export default function SurahReader() {
                           key={s.number}
                           to={`/quran/${s.number}`}
                           onClick={() => setIsSidebarOpen(false)}
-                          className={`flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors ${
+                          className={`flex items-center gap-4 px-5 py-3 text-[14px] font-semibold transition-colors ${
                             s.number === num
-                              ? 'bg-[#178b50]/10 text-foreground border-l-2 border-[#178b50]'
-                              : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
+                              ? 'bg-[#178b50]/15 text-foreground'
+                              : 'text-foreground/80 hover:bg-accent/40 hover:text-foreground'
                           }`}
                         >
-                          <span className={`w-6 text-xs shrink-0 ${s.number === num ? 'text-[#178b50] font-bold' : ''}`}>{s.number}</span>
+                          <span className={`w-6 text-[13px] shrink-0 ${s.number === num ? 'text-[#178b50] font-bold' : 'text-muted-foreground font-medium'}`}>{s.number}</span>
                           <span className="truncate">{s.englishName}</span>
                         </Link>
                       ))
@@ -682,9 +749,8 @@ export default function SurahReader() {
 
               {sidebarTab === 'juz' && (
                 <div className="p-4">
-                  {juzsList
-                    .filter(j => String(j.juz_number).includes(searchQuery))
-                    .map((j) => (
+                  <div className="grid grid-cols-5 gap-2">
+                    {juzsList.map((j) => (
                       <button
                         key={j.id}
                         onClick={() => {
@@ -702,49 +768,50 @@ export default function SurahReader() {
                             navigate(`/quran/${firstSurah}#ayah=${firstAyah}`);
                           }
                         }}
-                        className="w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors mb-1"
+                        className="aspect-square flex items-center justify-center rounded-lg border border-border/50 bg-accent/20 text-[13px] font-medium text-foreground hover:bg-[#178b50]/15 hover:border-[#178b50]/50 hover:text-[#178b50] transition-all"
                       >
-                        <span className="font-bold text-foreground">Juz {j.juz_number}</span>
-                        <span className="text-xs">Verses: {j.verses_count}</span>
+                        {j.juz_number}
                       </button>
-                    ))
-                  }
+                    ))}
+                  </div>
                 </div>
               )}
 
               {sidebarTab === 'page' && (
-                <div className="p-4 grid grid-cols-4 gap-2">
-                  {Array.from({ length: 604 }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={async () => {
-                        const tid = toast.loading(`Loading Page ${p}...`);
-                        try {
-                          const verse = await qurancom.pageStart(p);
-                          setIsSidebarOpen(false);
-                          toast.dismiss(tid);
-                          if (!verse || !verse.verse_key) return;
-                          const [s, a] = verse.verse_key.split(':');
-                          if (parseInt(s) === num) {
-                            const el = document.querySelector(`[data-ayah-row="${a}"]`);
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "center" });
-                              el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
-                              setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+                <div className="p-4">
+                  <div className="grid grid-cols-5 gap-2">
+                    {Array.from({ length: 604 }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={async () => {
+                          const tid = toast.loading(`Loading Page ${p}...`);
+                          try {
+                            const verse = await qurancom.pageStart(p);
+                            setIsSidebarOpen(false);
+                            toast.dismiss(tid);
+                            if (!verse || !verse.verse_key) return;
+                            const [s, a] = verse.verse_key.split(':');
+                            if (parseInt(s) === num) {
+                              const el = document.querySelector(`[data-ayah-row="${a}"]`);
+                              if (el) {
+                                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
+                                setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+                              }
+                            } else {
+                              navigate(`/quran/${s}#ayah=${a}`);
                             }
-                          } else {
-                            navigate(`/quran/${s}#ayah=${a}`);
+                          } catch (e) {
+                            toast.dismiss(tid);
+                            toast.error(`Failed to load Page ${p}`);
                           }
-                        } catch (e) {
-                          toast.dismiss(tid);
-                          toast.error(`Failed to load Page ${p}`);
-                        }
-                      }}
-                      className="py-2.5 flex items-center justify-center rounded-lg border border-border/50 bg-accent/30 text-sm font-medium text-foreground hover:bg-primary/10 hover:border-primary/50 transition-all"
-                    >
-                      {p}
-                    </button>
-                  ))}
+                        }}
+                        className="aspect-square flex items-center justify-center rounded-lg border border-border/50 bg-accent/20 text-[13px] font-medium text-foreground hover:bg-[#178b50]/15 hover:border-[#178b50]/50 hover:text-[#178b50] transition-all"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -769,16 +836,32 @@ export default function SurahReader() {
                 </div>
               ) : (
                 <div className="space-y-6 pt-2 pb-6">
-                  <div className="flex flex-col items-start gap-4">
-                    <h1 className="font-arabic text-[50px] leading-none text-foreground drop-shadow-sm" dir="rtl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-6">
+                    <div>
+                      <h3 className="font-heading font-bold text-3xl text-foreground">{data.englishName}</h3>
+                      <p className="text-sm text-muted-foreground font-medium mt-0.5">{data.englishNameTranslation}</p>
+                    </div>
+                    <h1 className="font-arabic text-[44px] leading-none text-foreground drop-shadow-sm" dir="rtl">
                       {data.name}
                     </h1>
-                    <div>
-                      <h3 className="font-bold text-xl text-foreground">Surah {data.englishName}</h3>
-                      <div className="flex items-center gap-4 text-[14.5px] font-medium text-foreground/90 mt-2.5">
-                        <span><span className="font-bold text-foreground">Ayahs:</span> {data.ayahs?.length || "?"}</span>
-                        <span><span className="font-bold text-foreground">Revelation Place:</span> <span className="capitalize">{data.revelationType}</span></span>
-                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-xl border border-border/50 bg-accent/5 p-3 text-center">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Surah No.</p>
+                      <p className="text-lg font-bold text-foreground mt-1">{data.number}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-accent/5 p-3 text-center">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Verses</p>
+                      <p className="text-lg font-bold text-foreground mt-1">{data.versesCount || data.ayahs?.length || "—"}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-accent/5 p-3 text-center">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Revelation Place</p>
+                      <p className="text-lg font-bold text-foreground mt-1">{data.revelationType || "—"}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-accent/5 p-3 text-center">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Revelation Order</p>
+                      <p className="text-lg font-bold text-foreground mt-1">{data.revelationOrder || "—"}</p>
                     </div>
                   </div>
                   
@@ -793,7 +876,9 @@ export default function SurahReader() {
                       <div className="space-y-4">
                         <h4 className="font-bold text-[16px] text-foreground">Themes and Purpose:</h4>
                         <div 
-                          className="prose prose-sm md:prose-base dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-medium"
+                          className="prose prose-sm md:prose-base dark:prose-invert max-w-none text-foreground/90 leading-relaxed font-medium 
+                            [&_h2]:font-bold [&_h2]:text-primary [&_h2]:text-[16px] [&_h2]:mt-7 [&_h2]:mb-2
+                            prose-p:mt-0 prose-p:mb-4"
                           dangerouslySetInnerHTML={{ __html: surahInfoData.text || surahInfoData.short_text }}
                         />
                       </div>
@@ -806,191 +891,28 @@ export default function SurahReader() {
         </>
       )}
 
-      {/* Settings Modal */}
-      {isSettingsOpen && (
-        <>
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm transition-opacity" onClick={() => setIsSettingsOpen(false)} />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[400px] bg-card border-l border-border/60 shadow-2xl flex flex-col transition-transform transform translate-x-0">
-            {isTranslationSelectorOpen ? (
-              <div className="absolute inset-0 z-10 bg-card flex flex-col">
-                <div className="flex items-center gap-4 p-4 border-b border-border/40">
-                  <button onClick={() => setIsTranslationSelectorOpen(false)} className="p-2 -ml-2 rounded-full hover:bg-accent"><ArrowLeft className="h-5 w-5" /></button>
-                  <span className="font-bold text-[16px]">Translations</span>
-                </div>
-                <div className="p-4 border-b border-border/40">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input 
-                      type="text" 
-                      placeholder="Search Translations" 
-                      value={translationSearch}
-                      onChange={(e) => setTranslationSearch(e.target.value)}
-                      className="w-full bg-background border border-border/60 rounded-xl pl-9 pr-4 py-2.5 text-[14px] focus:outline-none focus:border-primary" 
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-thin">
-                  {Object.entries(editionsByLanguage).map(([lang, items]) => (
-                    <div key={lang}>
-                      <h4 className="font-bold text-[15px] mb-3 text-foreground capitalize">{lang}</h4>
-                      <div className="space-y-4">
-                        {items.map(e => (
-                          <label key={e.id} className="flex items-start gap-3 cursor-pointer group">
-                            <div className="mt-0.5">
-                              <input type="checkbox" checked={translationEditions.includes(e.id)} onChange={(ev) => {
-                                let next = [...translationEditions];
-                                if (ev.target.checked) next.push(e.id);
-                                else next = next.filter(id => id !== e.id);
-                                if (next.length === 0) next = [131]; // prevent empty
-                                setTranslationEditions(next);
-                                localStorage.setItem(TRANSLATION_KEY, JSON.stringify(next));
-                              }} className="w-5 h-5 rounded border-border/60 text-foreground focus:ring-foreground bg-accent/30 checked:bg-foreground checked:border-foreground" />
-                            </div>
-                            <div className="flex-1">
-                              <span className="text-[14px] font-medium text-foreground group-hover:text-primary transition-colors">{e.author_name || e.name}</span>
-                            </div>
-                            <Info className="h-4 w-4 text-muted-foreground opacity-50" />
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex bg-card pt-2 px-6 border-b border-border/40 text-[14px] font-bold text-muted-foreground">
-                  <button onClick={() => setSettingsTab("arabic")} className={`flex-1 pb-3 transition-colors ${settingsTab === 'arabic' ? 'text-primary border-b-[3px] border-primary' : 'hover:text-foreground'}`}>Arabic</button>
-                  <button onClick={() => setSettingsTab("translation")} className={`flex-1 pb-3 transition-colors ${settingsTab === 'translation' ? 'text-primary border-b-[3px] border-primary' : 'hover:text-foreground'}`}>Translation</button>
-                  <button onClick={() => setSettingsTab("wbw")} className={`flex-1 pb-3 transition-colors ${settingsTab === 'wbw' ? 'text-primary border-b-[3px] border-primary' : 'hover:text-foreground'}`}>Word By Word</button>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 scroll-thin">
-                  {/* Preview Area */}
-                  <div>
-                    <p className="text-[12px] font-medium text-muted-foreground mb-3">Preview:</p>
-                    <div className="rounded-2xl border border-border/40 bg-accent/10 p-6 flex flex-col items-center justify-center relative pt-12">
-                      <div className="absolute top-4 bg-primary text-primary-foreground text-[12px] font-bold px-3 py-1.5 rounded">
-                        the Most Gracious
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rotate-45"></div>
-                      </div>
-                      <div className="mt-4 font-arabic text-[36px] text-foreground text-center" dir="rtl">
-                        {arabicScript === 'indopak' ? 'بِسۡمِ اللّٰهِ الرَّحۡمٰنِ الرَّحِيۡمِ' : 
-                         arabicScript === 'uthmani' ? 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ' : 
-                         <span dangerouslySetInnerHTML={{ __html: 'بِسْمِ ٱللَّهِ <span class="text-[#06B6D4]">ٱلرَّحْمَٰنِ</span> ٱلرَّحِيمِ' }} />}
-                      </div>
-                      <p className="mt-6 text-[15px] font-medium text-foreground text-center">
-                        In the Name of Allah—the Most Compassionate, Most Merciful.
-                      </p>
-                    </div>
-                  </div>
-
-                  {settingsTab === 'arabic' && (
-                    <div className="space-y-6">
-                      <div className="flex bg-accent/20 rounded-full p-1 border border-border/60 text-[13px] font-bold">
-                        <button onClick={() => { setArabicScript('uthmani'); localStorage.setItem('deenguide:script', 'uthmani'); }} className={`flex-1 rounded-full py-2 hover:bg-background hover:shadow-sm transition-all ${arabicScript === 'uthmani' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}>Uthmani</button>
-                        <button onClick={() => { setArabicScript('indopak'); localStorage.setItem('deenguide:script', 'indopak'); }} className={`flex-1 rounded-full py-2 hover:bg-background hover:shadow-sm transition-all ${arabicScript === 'indopak' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}>IndoPak</button>
-                        <button onClick={() => { setArabicScript('tajweed'); localStorage.setItem('deenguide:script', 'tajweed'); }} className={`flex-1 rounded-full py-2 hover:bg-background hover:shadow-sm transition-all ${arabicScript === 'tajweed' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}>Tajweed</button>
-                      </div>
-                      
-                      <div className="pb-6 border-b border-border/40">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="font-bold text-[14px] text-foreground">Show Tajweed rules while reading:</span>
-                          <input type="checkbox" checked={arabicScript === 'tajweed'} onChange={(e) => { const s = e.target.checked ? 'tajweed' : 'uthmani'; setArabicScript(s); localStorage.setItem('deenguide:script', s); }} className="w-5 h-5 rounded border-border/60 text-primary focus:ring-primary" />
-                        </div>
-                        
-                        {arabicScript === 'tajweed' && (
-                          <div className="bg-background rounded-xl p-4 border border-border/60 mt-2">
-                            <h5 className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Color Legend</h5>
-                            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-[13px]">
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#A0A0A0]"></div> <span className="text-foreground/80">Silent letter</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#DFA800]"></div> <span className="text-foreground/80">Normal madd (2)</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#F68B1F]"></div> <span className="text-foreground/80">Separated madd</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#E10000]"></div> <span className="text-foreground/80">Connected madd</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#980000]"></div> <span className="text-foreground/80">Necessary madd</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#00A300]"></div> <span className="text-foreground/80">Ghunna/ikhfa'</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#008CBA]"></div> <span className="text-foreground/80">Qalqala (echo)</span></div>
-                              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#2253B8]"></div> <span className="text-foreground/80">Tafkhim (heavy)</span></div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-[15px] font-medium text-foreground">Font size</span>
-                        <div className="flex items-center gap-6">
-                          <button onClick={() => { const v = Math.max(1, fontSize - 1); setFontSize(v); localStorage.setItem('deenguide:font-size', v); }} className="text-foreground hover:text-primary p-2"><span className="text-2xl leading-none font-light block -mt-1">–</span></button>
-                          <span className="text-[15px] font-medium w-4 text-center">{fontSize}</span>
-                          <button onClick={() => { const v = Math.min(7, fontSize + 1); setFontSize(v); localStorage.setItem('deenguide:font-size', v); }} className="text-foreground hover:text-primary p-2"><span className="text-2xl leading-none font-light block -mt-1">+</span></button>
-                        </div>
-                      </div>
-
-                      <div className="py-2 border-t border-border/40 mt-4 pt-6">
-                        <label className="text-[13px] font-bold text-muted-foreground mb-3 block">Selected Reciter</label>
-                        <div className="relative">
-                          <select 
-                            value={reciter} 
-                            onChange={e => { setReciter(parseInt(e.target.value, 10)); localStorage.setItem(RECITER_KEY, e.target.value); }}
-                            className="w-full h-[52px] bg-card border border-border/60 rounded-[14px] px-4 font-bold text-[15px] text-foreground appearance-none focus:outline-none focus:border-primary transition-colors cursor-pointer"
-                          >
-                            {reciters.map((r) => (
-                              <option key={r.id} value={r.id}>{r.reciter_name || r.name || `Reciter ${r.id}`}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {settingsTab === 'translation' && (
-                    <div className="space-y-6">
-                      <div className="py-2 cursor-pointer group" onClick={() => setIsTranslationSelectorOpen(true)}>
-                        <label className="text-[13px] text-muted-foreground mb-2 block">Selected Translations</label>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-[15px] text-foreground group-hover:text-primary transition-colors">
-                            {translationEditions.length > 0 ? `${editions.find(e => e.id === translationEditions[0])?.name || editions.find(e => e.id === translationEditions[0])?.author_name || 'Translation'}${translationEditions.length > 1 ? `, and ${translationEditions.length - 1} others` : ''}` : 'Select translation'}
-                          </span>
-                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between py-6 border-t border-border/40">
-                        <span className="text-[15px] font-medium text-foreground">Font size</span>
-                        <div className="flex items-center gap-6">
-                          <button onClick={() => { const v = Math.max(1, fontSize - 1); setFontSize(v); localStorage.setItem('deenguide:font-size', v); }} className="text-foreground hover:text-primary p-2"><span className="text-2xl leading-none font-light block -mt-1">–</span></button>
-                          <span className="text-[15px] font-medium w-4 text-center">{fontSize}</span>
-                          <button onClick={() => { const v = Math.min(7, fontSize + 1); setFontSize(v); localStorage.setItem('deenguide:font-size', v); }} className="text-foreground hover:text-primary p-2"><span className="text-2xl leading-none font-light block -mt-1">+</span></button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {settingsTab === 'wbw' && (
-                    <div>
-                      <div className="space-y-4">
-                        <label className="flex items-center justify-between cursor-pointer group">
-                          <span className="text-[15px] font-bold text-foreground group-hover:text-primary transition-colors">Translation</span>
-                          <input type="checkbox" checked={wbwSettings.translation} onChange={() => toggleWbw('translation')} className="w-5 h-5 rounded border-border/60 text-primary focus:ring-primary" />
-                        </label>
-                        <label className="flex items-center justify-between cursor-pointer group">
-                          <span className="text-[15px] font-bold text-foreground group-hover:text-primary transition-colors">Transliteration</span>
-                          <input type="checkbox" checked={wbwSettings.transliteration} onChange={() => toggleWbw('transliteration')} className="w-5 h-5 rounded border-border/60 text-primary focus:ring-primary" />
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="p-4 border-t border-border/50 bg-card flex items-center justify-between shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
-                  <button onClick={() => { setArabicScript('tajweed'); setFontSize(3); setWbwSettings({ translation: true, transliteration: false }); setTranslationEditions([131]); localStorage.clear(); }} className="px-4 py-2 text-muted-foreground font-bold text-[15px] hover:text-foreground transition-colors">Reset</button>
-                  <button onClick={() => setIsSettingsOpen(false)} className="px-6 py-2.5 bg-foreground text-background font-bold text-[15px] rounded-xl hover:opacity-90 transition-opacity">Done</button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
+      {/* Settings Sidebar */}
+      <SettingsSidebar 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        activeTab={settingsTab}
+        onTabChange={setSettingsTab}
+        settings={{
+          fontSize,
+          translationFontSize,
+          arabicScript,
+          autoScroll,
+          reciter,
+          translationEditions,
+          volume,
+          playbackSpeed,
+          theme,
+          wbwSettings
+        }}
+        onUpdateSetting={onUpdateSetting}
+        reciters={reciters}
+        translations={editions}
+      />
 
       <div className="mx-auto max-w-4xl pb-24 px-4 sm:px-6">
         {loading && (
@@ -1057,52 +979,60 @@ export default function SurahReader() {
 
 
           {/* Secondary Controls Bar */}
-          <div className="flex flex-col items-center gap-6 mb-6">
-            <div className="flex items-center justify-center gap-1 sm:gap-2 bg-accent/20 border border-border/50 rounded-full p-1 text-[13px] font-bold">
-              <button 
-                onClick={togglePlayAll} 
-                className="flex items-center gap-1.5 rounded-full px-4 py-1.5 hover:text-primary transition-colors text-muted-foreground"
-              >
-                {playing ? <Pause className="h-4 w-4 text-primary" /> : <Play className="h-4 w-4 text-primary fill-primary/20" />} 
-                {playing ? "Pause" : "Listen"}
-              </button>
-              
-              {viewMode === "reading" ? (
-                <div className="px-1 sm:px-2 border-l border-border/60 flex items-center gap-1 relative">
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-6 font-bold text-[13px]">
+            {/* Listen Button */}
+            <button 
+              onClick={togglePlayAll} 
+              className="flex items-center gap-2 bg-background/50 backdrop-blur-sm border border-border/50 rounded-full px-5 py-2 hover:bg-accent/40 transition-all shadow-sm hover:shadow-md text-foreground"
+            >
+              {playing ? <Pause className="h-4 w-4 text-primary" /> : <Play className="h-4 w-4 text-primary fill-primary/20" />} 
+              {playing ? "Pause" : "Listen"}
+            </button>
+            
+            {viewMode === "reading" ? (
+              <>
+                {/* Arabic Toggle */}
+                <button 
+                  onClick={() => setReadingView("arabic")} 
+                  className={`px-5 py-2 rounded-full border transition-all shadow-sm ${readingView === "arabic" ? "bg-background border-primary text-[#178b50] ring-1 ring-primary/20" : "bg-background/50 border-border/50 text-muted-foreground hover:bg-accent/40 hover:text-foreground"}`}
+                >
+                  Arabic
+                </button>
+
+                {/* Translation Dropdown */}
+                <div className="relative">
                   <button 
-                    onClick={() => setReadingView("arabic")} 
-                    className={`px-3 sm:px-4 py-1.5 rounded-full transition-all ${readingView === "arabic" ? "bg-background shadow-[0_2px_10px_rgba(0,0,0,0.05)] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => {
+                      if (readingView !== "translation") {
+                        setReadingView("translation");
+                      } else {
+                        setIsSettingsOpen(true);
+                        setTimeout(() => setSettingsTab('translation'), 50);
+                      }
+                    }} 
+                    className={`flex items-center gap-2 px-5 py-2 rounded-full border transition-all shadow-sm ${readingView === "translation" ? "bg-background border-primary text-[#178b50] ring-1 ring-primary/20" : "bg-background/50 border-border/50 text-muted-foreground hover:bg-accent/40 hover:text-foreground"}`}
                   >
-                    Arabic
+                    Translation: 
+                <span className="truncate max-w-[120px] font-medium">
+                  {selectedTranslation ? (selectedTranslation.author_name || selectedTranslation.name) : (editions.length === 0 ? "..." : "Translation")}
+                  {translationEditions.length > 1 && ` +${translationEditions.length - 1}`}
+                </span>
+                    <ChevronDown className="h-3 w-3" onClick={(e) => { e.stopPropagation(); setIsTranslationDropdownOpen(!isTranslationDropdownOpen); }} />
                   </button>
-                  <div className="relative">
-                    <button 
-                      onClick={() => {
-                        if (readingView !== "translation") {
-                          setReadingView("translation");
-                        } else {
-                          setIsTranslationDropdownOpen(!isTranslationDropdownOpen);
-                        }
-                      }} 
-                      className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full transition-all ${readingView === "translation" ? "bg-foreground shadow-[0_2px_10px_rgba(0,0,0,0.05)] text-background" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                      Translation: <span className="truncate max-w-[80px] sm:max-w-[120px] font-medium">{selectedTranslation ? (selectedTranslation.author_name || selectedTranslation.name) : "Default"}</span>
-                      <ChevronDown className={`h-3 w-3 ${readingView === "translation" ? "text-background/70" : "text-muted-foreground"} transition-transform ${isTranslationDropdownOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    
-                    {isTranslationDropdownOpen && readingView === "translation" && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsTranslationDropdownOpen(false)} />
-                        <div className="absolute top-full right-0 mt-2 w-[280px] sm:w-[320px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-                          <div className="px-3 py-2 border-b border-border/40 mb-2">
-                            <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-wider">My Translations</span>
-                          </div>
+                  
+                  {isTranslationDropdownOpen && readingView === "translation" && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsTranslationDropdownOpen(false)} />
+                      <div className="absolute top-full right-0 mt-2 w-[280px] sm:w-[320px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-3 py-2 border-b border-border/40 mb-2">
+                          <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-wider">My Translations</span>
+                        </div>
+                        <div className="max-h-[250px] overflow-y-auto scroll-thin">
                           <div className="max-h-[250px] overflow-y-auto scroll-thin">
                             {editions.filter(e => translationEditions.includes(e.id) || [131, 20, 97, 14, 85].includes(e.id)).slice(0, 8).map(e => (
                               <button
                                 key={e.id}
                                 onClick={() => {
-                                  // Just set this translation as the active primary one
                                   const next = [e.id, ...translationEditions.filter(id => id !== e.id)];
                                   setTranslationEditions(next);
                                   localStorage.setItem(TRANSLATION_KEY, JSON.stringify(next));
@@ -1114,25 +1044,29 @@ export default function SurahReader() {
                               </button>
                             ))}
                           </div>
-                          <div className="px-2 pt-2 border-t border-border/40 mt-2">
-                            <button onClick={() => { setIsTranslationDropdownOpen(false); setIsSettingsOpen(true); setTimeout(() => setSettingsTab('translation'), 100); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-bold text-foreground hover:bg-accent/50 transition-colors">
-                              <Settings className="h-4 w-4" /> Select Translations
-                            </button>
-                          </div>
                         </div>
-                      </>
-                    )}
-                  </div>
+                        <div className="px-2 pt-2 border-t border-border/40 mt-2">
+                          <button onClick={() => { setIsTranslationDropdownOpen(false); setIsSettingsOpen(true); setTimeout(() => setSettingsTab('translation'), 100); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-bold text-foreground hover:bg-accent/50 transition-colors">
+                            <Settings className="h-4 w-4" /> Select Translations
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <div className="px-3 border-l border-border/60 text-muted-foreground flex items-center gap-1">
-                  Translation: 
-                  <span className="text-foreground cursor-pointer hover:text-primary transition-colors font-medium" onClick={() => setIsSettingsOpen(true)}>
-                    {selectedTranslation ? (selectedTranslation.author_name || selectedTranslation.name) : "Default"}
-                  </span>
-                </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <button 
+                onClick={() => { setIsSettingsOpen(true); setTimeout(() => setSettingsTab('translation'), 50); }}
+                className="flex items-center gap-2 bg-background/50 backdrop-blur-sm border border-border/50 rounded-full px-5 py-2 hover:bg-accent/40 transition-all shadow-sm hover:shadow-md text-muted-foreground hover:text-foreground"
+              >
+                Translation: 
+                <span className="text-foreground font-medium">
+                  {selectedTranslation ? (selectedTranslation.author_name || selectedTranslation.name) : (editions.length === 0 ? "..." : "Translation")}
+                  {translationEditions.length > 1 && ` +${translationEditions.length - 1}`}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Surah Title Header */}
@@ -1167,7 +1101,7 @@ export default function SurahReader() {
 
           {/* Ayahs Rendering */}
           {viewMode === "verse" ? (
-            <div className="space-y-12 mt-4">
+            <div className="space-y-6 mt-2">
               {data.ayahs.map((a, idx) => {
                 const bkId = `${data.number}:${a.number}`;
                 const saved = isBookmarked("ayahs", bkId);
@@ -1177,10 +1111,10 @@ export default function SurahReader() {
                   <div
                     key={a.number}
                     data-ayah-row={a.number}
-                    className={`pb-10 border-b border-border/30 last:border-0 transition-colors ${isCurrent ? "bg-accent/10 -mx-4 px-4 rounded-2xl" : ""}`}
+                    className={`pb-4 border-b border-border/30 last:border-0 transition-colors ${isCurrent ? "bg-accent/10 -mx-4 px-4 rounded-xl" : ""}`}
                   >
                     {/* Verse Header Controls */}
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-5 text-muted-foreground">
                         <span className="text-[14px] font-bold text-primary hover:underline cursor-pointer">{data.number}:{a.number}</span>
                         <button onClick={() => playSingle(idx)} className="text-foreground hover:text-primary transition-colors" title="Play Verse">
@@ -1213,6 +1147,12 @@ export default function SurahReader() {
                               <div className="fixed inset-0 z-40" onClick={() => setOpenMoreMenu(null)} />
                               <div className="absolute right-0 top-8 z-50 w-52 bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                                 <button
+                                  onClick={() => { setIsSettingsOpen(true); setTimeout(() => setSettingsTab('translation'), 50); setOpenMoreMenu(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
+                                >
+                                  <MessageSquareText className="h-4 w-4" /> Translation
+                                </button>
+                                <button
                                   onClick={() => { toggleTafsir(a.number); setOpenMoreMenu(null); }}
                                   className={`w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium transition-colors hover:bg-accent/50 ${ tafsir[a.number]?.open ? 'text-primary' : 'text-foreground' }`}
                                 >
@@ -1223,12 +1163,6 @@ export default function SurahReader() {
                                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
                                 >
                                   <Languages className="h-4 w-4" /> Word by Word
-                                </button>
-                                <button
-                                  onClick={() => { setIsSettingsOpen(true); setTimeout(() => setSettingsTab('translation'), 50); setOpenMoreMenu(null); }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
-                                >
-                                  <MessageSquareText className="h-4 w-4" /> Translation
                                 </button>
                                 <div className="border-t border-border/40" />
                                 <button
@@ -1245,16 +1179,16 @@ export default function SurahReader() {
                     </div>
                     
                     {/* Arabic Text (Word by Word & Tajweed) */}
-                    <div className="mb-6 flex flex-wrap justify-start gap-x-2 gap-y-5 dir-rtl" dir="rtl">
+                    <div className="mb-1 flex flex-wrap justify-start gap-x-1.5 gap-y-0.5 dir-rtl" dir="rtl">
                       {arabicScript === 'indopak' ? (
-                         <div className="font-arabic leading-[2.4] text-foreground text-right" style={{ fontSize: getArabicFontSize() }}>
+                         <div className="font-arabic leading-[1.9] text-foreground text-right" style={{ fontSize: getArabicFontSize() }}>
                            {a.indopak} <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>
                          </div>
                       ) : (
                         a.words.map((w, i) => (
                           <div key={w.id} className="group relative flex flex-col items-center justify-start cursor-pointer hover:bg-accent/20 rounded p-1 transition-colors text-center">
                             <span 
-                              className="font-arabic leading-[1.8] text-foreground transition-all duration-300" 
+                              className="font-arabic leading-[1.3] text-foreground transition-all duration-300" 
                               style={{ fontSize: w.char_type_name === 'end' ? `max(16px, calc(${getArabicFontSize()} * 0.6))` : getArabicFontSize() }}
                               dangerouslySetInnerHTML={{ __html: w.char_type_name === 'end' ? `<span class="text-primary">﴾${w.arabic}﴿</span>` : (arabicScript === 'tajweed' ? w.tajweed : w.arabic) }}
                             />
@@ -1274,7 +1208,7 @@ export default function SurahReader() {
                     </div>
 
                     {/* Translation Text */}
-                    <div className="space-y-5">
+                    <div className="space-y-3">
                       {a.translations?.map((t, tidx) => {
                         const edition = editions.find(e => e.id === t.id);
                         const isRTL = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/.test(t.text);
@@ -1285,7 +1219,7 @@ export default function SurahReader() {
                               style={{ fontSize: getTranslationFontSize() }}
                               dangerouslySetInnerHTML={{ __html: t.text }}
                             />
-                            <p className={`mt-3 text-[13px] text-muted-foreground italic ${isRTL ? 'text-right' : 'text-left'}`}>
+                            <p className={`mt-1 text-[13px] text-muted-foreground italic ${isRTL ? 'text-right' : 'text-left'}`}>
                               — {edition?.author_name || edition?.name || "Translation"}
                             </p>
                           </div>
@@ -1302,7 +1236,7 @@ export default function SurahReader() {
               {Object.entries(ayahsByPage).map(([pageNum, pageAyahs]) => (
                 <div key={pageNum}>
                   {readingView === "arabic" ? (
-                    <div dir="rtl" className={`font-arabic leading-[2.4] text-foreground max-w-4xl mx-auto transition-all duration-300 ${data.number === 1 ? 'text-center' : 'text-justify'}`} style={{ textJustify: data.number === 1 ? 'none' : 'inter-word', fontSize: getArabicFontSize() }}>
+                    <div dir="rtl" className={`font-arabic leading-[1.9] text-foreground max-w-4xl mx-auto transition-all duration-300 ${data.number === 1 ? 'text-center' : 'text-justify'}`} style={{ textJustify: data.number === 1 ? 'none' : 'inter-word', fontSize: getArabicFontSize() }}>
                       {pageAyahs.map(a => (
                         <span key={a.number} data-ayah-row={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
                           <span dangerouslySetInnerHTML={{ __html: arabicScript === 'tajweed' ? a.tajweed : (arabicScript === 'indopak' ? a.indopak : a.arabic) }} /> <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>{" "}
@@ -1314,7 +1248,7 @@ export default function SurahReader() {
                       const tFirst = pageAyahs[0]?.translations?.[0];
                       const isContainerRTL = tFirst && /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/.test(tFirst.text);
                       return (
-                        <div dir={isContainerRTL ? "rtl" : "ltr"} className={`leading-[2.2] text-foreground/90 max-w-4xl mx-auto transition-all duration-300 ${isContainerRTL ? "text-right font-arabic" : "text-left font-sans"} ${data.number === 1 ? 'text-center' : 'text-justify'}`} style={{ textJustify: data.number === 1 ? 'none' : 'inter-word', fontSize: getTranslationFontSize() }}>
+                        <div dir={isContainerRTL ? "rtl" : "ltr"} className={`leading-[1.8] text-foreground/90 max-w-4xl mx-auto transition-all duration-300 ${isContainerRTL ? "text-right font-arabic" : "text-left font-sans"} ${data.number === 1 ? 'text-center' : 'text-justify'}`} style={{ textJustify: data.number === 1 ? 'none' : 'inter-word', fontSize: getTranslationFontSize() }}>
                           {pageAyahs.map(a => {
                             const t = a.translations && a.translations.length > 0 ? a.translations[0] : { text: "No translation available." };
                             return (
@@ -1368,159 +1302,24 @@ export default function SurahReader() {
       )}
 
 
-      {/* Quran.com-Style Tafsir Side Panel */}
-      {tafsirPanelOpen && (() => {
-        const panelAyah = data?.ayahs.find(a => a.number === tafsirPanelAyahNum);
-        const panelAyahIdx = data?.ayahs.findIndex(a => a.number === tafsirPanelAyahNum) ?? -1;
-        const tafsirData = tafsir[tafsirPanelAyahNum] || { loading: false, text: '' };
-        const goToAyah = async (ayahNum) => {
-          setTafsirPanelAyahNum(ayahNum);
-          if (!tafsir[ayahNum]?.text) {
-            setTafsir(prev => ({ ...prev, [ayahNum]: { open: true, loading: true, text: '' } }));
-            const text = await fetchAyahTafsir(ayahNum);
-            setTafsir(prev => ({ ...prev, [ayahNum]: { open: true, loading: false, text } }));
-          }
-        };
-        return (
-          <>
-            <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setTafsirPanelOpen(false)} />
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-[850px] h-[85vh] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0 bg-accent/10 rounded-t-2xl">
-                <div className="flex items-center gap-1.5">
-                  <button className="flex items-center gap-1.5 text-[14px] font-bold text-foreground bg-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/50 transition-colors">
-                    {data?.englishName} <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </button>
-                  <button className="flex items-center gap-1.5 text-[14px] font-bold text-foreground bg-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/50 transition-colors">
-                    {tafsirPanelAyahNum} <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </button>
-                  <div className="flex items-center gap-0.5 ml-1 bg-accent/30 rounded-lg p-0.5">
-                    <button onClick={() => { if (panelAyahIdx > 0) goToAyah(data.ayahs[panelAyahIdx - 1].number); }}
-                      disabled={panelAyahIdx <= 0}
-                      className={`p-1.5 rounded-md transition-colors ${panelAyahIdx <= 0 ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-accent text-foreground'}`}>
-                      <ChevronRight className="h-4 w-4 rotate-180" />
-                    </button>
-                    <button onClick={() => { if (data && panelAyahIdx < data.ayahs.length - 1) goToAyah(data.ayahs[panelAyahIdx + 1].number); }}
-                      disabled={!data || panelAyahIdx >= data.ayahs.length - 1}
-                      className={`p-1.5 rounded-md transition-colors ${!data || panelAyahIdx >= data.ayahs.length - 1 ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover:bg-accent text-foreground'}`}>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <button onClick={() => setTafsirPanelOpen(false)} className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              {/* Scrollable body */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Ayah area */}
-                <div className="px-8 py-6 border-b border-border/40">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <span className="text-[14px] font-bold text-primary">{data?.number}:{tafsirPanelAyahNum}</span>
-                      <button onClick={() => { if (panelAyahIdx >= 0) playSingle(panelAyahIdx); }} className="text-muted-foreground hover:text-primary transition-colors"><Play className="h-4 w-4 fill-current" /></button>
-                      <button onClick={() => { if (panelAyah) { const bkId = `${data.number}:${panelAyah.number}`; toggle('ayahs', { id: bkId, surah: data.number, surah_name: data.englishName, ayah: panelAyah.number, arabic: panelAyah.arabic, translation: panelAyah.translation }); }}} className="text-muted-foreground hover:text-primary transition-colors"><Bookmark className="h-4 w-4" /></button>
-                    </div>
-                  </div>
-                  {panelAyah && (
-                    <div className="font-arabic text-[32px] leading-[2.2] text-foreground text-right mb-6" dir="rtl">
-                      <span dangerouslySetInnerHTML={{ __html: arabicScript === 'tajweed' ? panelAyah.tajweed : (arabicScript === 'indopak' ? panelAyah.indopak : panelAyah.arabic) }} />
-                      {' '}<span className="text-primary text-[20px]">﴾{panelAyah.number}﴿</span>
-                    </div>
-                  )}
-                  {panelAyah?.translations?.[0] && (
-                    <div className="text-[16px] font-medium text-foreground/90 leading-relaxed font-sans mt-4 mb-2">
-                      <span dangerouslySetInnerHTML={{ __html: panelAyah.translations[0].text }} />
-                    </div>
-                  )}
-                </div>
-                {/* Tab bar */}
-                <div className="flex border-b border-border/40 px-6 gap-6 overflow-x-auto scroll-thin">
-                  <button className="flex items-center gap-2 py-4 text-[14px] font-bold text-[#178b50] border-b-2 border-[#178b50] -mb-px whitespace-nowrap">
-                    <BookText className="h-4 w-4" /> Tafsirs
-                  </button>
-                  <button className="flex items-center gap-2 py-4 text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
-                    Lessons
-                  </button>
-                  <button className="flex items-center gap-2 py-4 text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
-                    Reflections
-                  </button>
-                </div>
-                {/* Controls: Aa + Language + Edition pills */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-border/40 overflow-x-auto scroll-thin">
-                  {tafsirWidget === 'aa' ? (
-                    <div className="flex items-center gap-3 bg-accent/30 px-3 py-1.5 rounded-full text-[13px] font-bold shrink-0 animate-in fade-in zoom-in-95 duration-150 border border-border/40 shadow-sm">
-                      <span className="text-muted-foreground pr-1">Aa</span>
-                      <button onClick={() => { setTafsirFontSize(p => { const n = Math.max(1, p - 1); localStorage.setItem('deenguide:tafsir-font-size', n.toString()); return n; }); }} className="opacity-70 hover:opacity-100 px-1">−</button>
-                      <span className="text-primary w-3 text-center">{tafsirFontSize}</span>
-                      <button onClick={() => { setTafsirFontSize(p => { const n = Math.min(5, p + 1); localStorage.setItem('deenguide:tafsir-font-size', n.toString()); return n; }); }} className="opacity-70 hover:opacity-100 px-1">+</button>
-                      <div className="w-px h-3 bg-border/60 mx-1" />
-                      <button onClick={() => setTafsirWidget(null)} className="opacity-70 hover:opacity-100 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setTafsirWidget('aa')} className="flex items-center gap-2 bg-accent/30 hover:bg-accent/50 px-4 py-1.5 rounded-full text-[13px] font-bold shrink-0 transition-colors">
-                      Aa <ChevronDown className="h-3 w-3 opacity-50" />
-                    </button>
-                  )}
-                  
-                  <div className="relative shrink-0">
-                    <select value={activeTafsirLang}
-                      onChange={(e) => {
-                        const first = tafsirEditions.find(t => t.language === e.target.value);
-                        if (first) {
-                          const id = first.id || first.slug;
-                          setTafsirEdition(id);
-                          setTafsir(prev => ({ ...prev, [tafsirPanelAyahNum]: { open: true, loading: true, text: '' } }));
-                          quran.tafsir(parseInt(data.number, 10), tafsirPanelAyahNum, id).then(res =>
-                            setTafsir(prev => ({ ...prev, [tafsirPanelAyahNum]: { open: true, loading: false, text: res?.text || '' } }))
-                          );
-                        }
-                      }}
-                      className="bg-accent/30 hover:bg-accent/50 rounded-full px-4 py-1.5 text-[13px] font-bold text-foreground appearance-none pr-8 cursor-pointer focus:outline-none transition-colors">
-                      {tafsirLangs.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none text-muted-foreground opacity-50" />
-                  </div>
-                  
-                  <div className="w-px h-5 bg-border/40 shrink-0 mx-1" />
-
-                  {tafsirEditions.filter(t => t.language === activeTafsirLang).map(t => {
-                    const id = t.id || t.slug;
-                    const isActive = tafsirEdition === id;
-                    return (
-                      <button key={id}
-                        onClick={async () => {
-                          setTafsirEdition(id);
-                          setTafsir(prev => ({ ...prev, [tafsirPanelAyahNum]: { open: true, loading: true, text: '' } }));
-                          try {
-                            const res = await quran.tafsir(parseInt(data.number, 10), tafsirPanelAyahNum, id);
-                            setTafsir(prev => ({ ...prev, [tafsirPanelAyahNum]: { open: true, loading: false, text: res?.text || '' } }));
-                          } catch { setTafsir(prev => ({ ...prev, [tafsirPanelAyahNum]: { open: true, loading: false, text: 'Error loading tafsir.' } })); }
-                        }}
-                        className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[13px] font-bold shrink-0 transition-colors shadow-sm ${isActive ? 'bg-[#178b50] text-white' : 'bg-accent/30 hover:bg-accent/50 text-foreground'}`}>
-                        {t.scholar || t.name}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Tafsir text */}
-                <div className="px-8 py-8">
-                  {tafsirData.loading ? (
-                    <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/60" /></div>
-                  ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none font-medium font-sans text-foreground/90"
-                      style={{ 
-                        fontSize: `${13 + (tafsirFontSize * 2)}px`,
-                        lineHeight: `${1.6 + (tafsirFontSize * 0.1)}`
-                      }}
-                      dangerouslySetInnerHTML={{ __html: tafsirData.text?.replace(/<h2/g, '<h2 class="text-xl font-bold mb-4 mt-8 text-foreground"').replace(/<p/g, '<p class="mb-5"') || '<p class="text-muted-foreground italic">No Tafsir available for this verse.</p>' }} />
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+      {/* Tafsir Modal */}
+      <TafsirModal 
+        isOpen={tafsirPanelOpen}
+        onClose={() => setTafsirPanelOpen(false)}
+        ayahNumber={tafsirPanelAyahNum}
+        surahNumber={parseInt(data?.number, 10)}
+        ayahData={data?.ayahs.find(a => a.number === tafsirPanelAyahNum)}
+        onPlayAyah={(num) => {
+          const idx = data?.ayahs.findIndex(a => a.number === num);
+          if (idx !== -1) playSingle(idx);
+        }}
+        onBookmarkAyah={(num) => {
+          const bkId = `${data.number}:${num}`;
+          const a = data?.ayahs.find(a => a.number === num);
+          toggle('ayahs', { id: bkId, surah: data.number, surah_name: data.englishName, ayah: num, arabic: a?.arabic, translation: a?.translation });
+        }}
+        arabicScript={arabicScript}
+      />
 
       {/* Sticky Audio Player */}
       {isAudioPlayerVisible && (

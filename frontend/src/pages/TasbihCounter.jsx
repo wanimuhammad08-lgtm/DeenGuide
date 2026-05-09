@@ -223,7 +223,7 @@ export default function TasbihCounter() {
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [bgIndex, setBgIndex] = useState(() => {
     const saved = localStorage.getItem("dg_tasbih_bg");
-    return saved ? parseInt(saved, 10) : 0;
+    return saved ? parseInt(saved, 10) : 4; // Default to Ocean Blue instead of Sunset
   });
   const [ripple, setRipple] = useState(false);
   const dropdownRef = useRef(null);

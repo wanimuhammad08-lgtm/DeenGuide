@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Sparkles, Send, Mic, MicOff, Loader2, BookOpen, ScrollText, Bookmark, BookmarkCheck, Volume2, VolumeX, Quote, Brain, Scale, FileSearch } from "lucide-react";
 import { ai } from "@/lib/api";
 import { useBookmarks } from "@/lib/bookmarks";
@@ -197,7 +198,7 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
       </div>
 
       <div className="p-5 sm:p-6 space-y-6">
-        {/* Main Narrative Answer (MuslimGPT Style) */}
+        {/* Main Narrative Answer (Intro) */}
         <div className="text-[15px] leading-[1.8] text-foreground/90 whitespace-pre-wrap font-medium space-y-4">
           {data.detailed_answer ? data.detailed_answer : data.answer}
         </div>
@@ -219,14 +220,12 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
                   <span className="text-xs font-bold text-primary uppercase tracking-wider">
                     Surah {q.surah_name} {q.surah}:{q.ayah}
                   </span>
-                  <a
-                    href={`https://quran.com/${q.surah}/${q.ayah}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    to={`/quran/${q.surah}#ayah=${q.ayah}`}
                     className="text-[11px] font-semibold text-primary hover:underline"
                   >
-                    View on Quran.com ↗
-                  </a>
+                    Read in App ↗
+                  </Link>
                 </div>
                 <div className="p-4">
                   <p dir="rtl" className="text-right font-arabic text-2xl leading-[2.2] text-foreground mb-3">{q.arabic}</p>
@@ -245,7 +244,6 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
               const hid = `${index}-h-${i}`;
               const speaking = tts?.speaking && tts?.activeId === hid;
               const collLabel = collectionLabels[h.collection] || h.collection;
-              const sunnahUrl = `https://sunnah.com/${h.collection}:${h.number}`;
               return (
                 <div key={i} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
                   <div className="px-4 py-2 bg-primary/8 border-b border-border/40 flex flex-wrap items-center justify-between gap-2">
@@ -264,9 +262,12 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
                         </button>
                       )}
                     </div>
-                    <a href={sunnahUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold text-primary hover:underline">
-                      View on Sunnah.com ↗
-                    </a>
+                    <Link
+                      to={`/hadith?book=${h.collection}&number=${h.number}`}
+                      className="text-[11px] font-semibold text-primary hover:underline"
+                    >
+                      Read in App ↗
+                    </Link>
                   </div>
                   <div className="p-4">
                     {h.arabic && <p dir="rtl" className="text-right font-arabic text-xl leading-[2.2] mb-3">{h.arabic}</p>}
@@ -275,6 +276,25 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Scholarly Insight / Fiqh Note */}
+        {data.scholarly_notes && (
+          <div className="space-y-3 pt-4 border-t border-border/40">
+            <SectionLabel icon={Scale} label="Scholarly Insight" />
+            <div className="rounded-xl border border-border/60 bg-primary/5 p-4 border-l-4 border-l-primary/50">
+              <p className="text-[14px] leading-[1.7] text-foreground/90 italic">
+                {data.scholarly_notes}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Conclusion */}
+        {data.conclusion && (
+          <div className="pt-2 text-[15px] leading-[1.8] font-medium text-foreground/90 animate-in fade-in slide-in-from-bottom-1 duration-300">
+            {data.conclusion}
           </div>
         )}
       </div>

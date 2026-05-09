@@ -150,6 +150,28 @@ export default function PrayerTimes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [times, now, offsetDays]);
 
+  // Special / Supplementary times
+  const suhurEnd = times?.fajr?.time || "--:--";
+  const iftar = times?.maghrib?.time || "--:--";
+  const tahajjudMs = times ? (() => {
+    const maghribMs = times.maghrib?.ms;
+    const fajrMs = times.fajr?.ms;
+    if (!maghribMs || !fajrMs) return null;
+    const night = fajrMs + 24*3600000 - maghribMs;
+    return fajrMs + 24*3600000 - night / 3;
+  })() : null;
+  const tahajjudTime = tahajjudMs ? new Date(tahajjudMs).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true}) : "--:--";
+
+  // Forbidden windows (exact clones of dashboard physics)
+  const sunriseStart = times?.sunrise?.time || "--:--";
+  const sunriseEnd = times?.sunrise?.ms ? new Date(times.sunrise.ms + 15*60000).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true}) : "--:--";
+  const noonStart = times?.dhuhr?.ms ? new Date(times.dhuhr.ms - 5*60000).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true}) : "--:--";
+  const noonEnd = times?.dhuhr?.time || "--:--";
+  const sunsetStart = times?.maghrib?.ms ? new Date(times.maghrib.ms - 15*60000).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true}) : "--:--";
+  const sunsetEnd = times?.maghrib?.time || "--:--";
+
+  const [isForbiddenModalOpen, setIsForbiddenModalOpen] = useState(false);
+
   // Countdown timer for next sunrise
   useEffect(() => {
     const id = setInterval(() => {
@@ -569,6 +591,50 @@ export default function PrayerTimes() {
             </div>
           </div>
 
+          {/* Suhur / Iftar / Tahajjud */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+            {[
+              { icon:"🌙", label:"Suhur End", time: suhurEnd },
+              { icon:"🌅", label:"Iftar", time: iftar },
+              { icon:"🌃", label:"Tahajjud", time: tahajjudTime },
+            ].map((item) => (
+              <div key={item.label} style={{ background:"var(--card)", borderRadius:14, padding:"12px 10px", border:"1px solid var(--border)", textAlign:"center" }}>
+                <div style={{ fontSize:18, marginBottom:4 }}>{item.icon}</div>
+                <div style={{ fontSize:11, color:"var(--muted-foreground)", fontWeight:500 }}>{item.label}</div>
+                <div style={{ fontSize:13, color:"var(--foreground)", fontWeight:700, marginTop:2 }}>{item.time}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Forbidden Salat Times */}
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <p className="text-[13px] text-muted-foreground font-semibold">Forbidden Salat Times</p>
+              <button 
+                onClick={() => setIsForbiddenModalOpen(true)}
+                className="text-[16px] text-muted-foreground hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+              >ⓘ</button>
+            </div>
+            {[
+              { bg:"linear-gradient(135deg,#4A1942,#C0392B)", icon:"🌄", label:"Sunrise", start: sunriseStart, end: sunriseEnd },
+              { bg:"linear-gradient(135deg,#1A3A5C,#2B6CB0)", icon:"☀️", label:"Noon", start: noonStart, end: noonEnd },
+              { bg:"linear-gradient(135deg,#7B2D00,#E8623A)", icon:"🌇", label:"Sunset", start: sunsetStart, end: sunsetEnd },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-3 px-4 py-2.5 border-t border-border/50">
+                <div style={{
+                  width:52, height:40, borderRadius:10,
+                  background:item.bg,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:18, flexShrink:0
+                }}>{item.icon}</div>
+                <div className="flex-1">
+                  <div className="text-[13px] font-semibold text-foreground">{item.label}</div>
+                  <div className="text-[12px] text-muted-foreground mt-0.5">{item.start} – {item.end}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Monthly Timetable link */}
           <Link
             to="/prayer-times/monthly"
@@ -618,6 +684,66 @@ export default function PrayerTimes() {
             </button>
           </div>
         </div>
+      )}
+      {/* Forbidden Times Info Modal */}
+      {isForbiddenModalOpen && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm" onClick={() => setIsForbiddenModalOpen(false)} />
+          <div className="fixed left-[50%] top-[50%] z-[70] w-[92%] max-w-md translate-x-[-50%] translate-y-[-50%] rounded-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-bottom-4 duration-300 flex flex-col max-h-[80vh] overflow-hidden text-left">
+            <div className="flex items-center justify-between p-4 border-b border-border/50 shrink-0">
+              <button onClick={() => setIsForbiddenModalOpen(false)} className="rounded-full p-1.5 hover:bg-accent text-muted-foreground">
+                <X className="h-4 w-4" />
+              </button>
+              <h3 className="font-heading text-[15px] font-bold text-foreground">Forbidden Time</h3>
+              <div style={{ width: 32 }} />
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 scroll-thin text-[14px] leading-[1.7] text-foreground/80">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-[16px] text-foreground mb-2">The Time of Sunrise</h4>
+                  <p>It Starts from: the time when the first portion of the sun can be seen on the eastern horizon; It Ends when: the entire Sun has become visible.</p>
+                  <p className="mt-2">It is safe to start the Salat after the sun has risen to the height of a spear. Nowadays, this is regarded as about 12(twelve) minutes after the sun starts to rise, but to be on the safe side we may consider it to be around 15(fifteen) to 20(twenty) minutes.</p>
+                  <p className="mt-2 text-destructive font-medium">Please try not to hit this time.</p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-[16px] text-foreground mb-2">The Time of Sunset</h4>
+                  <p>It Starts from: the time when the Sun just touches the western horizon; it is also said that it starts when the sunlight becomes pale. It Ends when: the entire Sun disappears.</p>
+                  <p className="mt-2">This may be considered about 12(twelve) minutes before sunset, but to be on the safe side we should consider it to be around 15(fifteen) to 20(twenty) minutes.</p>
+                  <p className="mt-2 italic border-l-2 border-primary/30 pl-3 py-1 bg-accent/30 text-[13px]">
+                    However, if any person somehow couldn't pray his/her Asr Salat, he/she can pray that particular Asr waqt of that day, even if it reaches the forbidden time of Sunset. But this particular rule applies only to the Asr Prayer of that particular day.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-[16px] text-foreground mb-2">The Time of Zawaal</h4>
+                  <p>Zawaal is the point of time when the sun is at its highest point, i.e. when the shadow of an object reaches its shortest length. When the sun is right on top it is in its peak position, this is the time when the shadow of an object is almost zero.</p>
+                  <p className="mt-2">We should not start our prayer in a time, when there is a possibility that the time within our Salat coincides with this point of time.</p>
+                </div>
+                <hr className="border-border/50" />
+                <div>
+                  <h4 className="font-bold text-[16px] text-foreground mb-2">References of Authentic Hadiths:</h4>
+                  <p className="mb-2">There are 3(three) times at which the Messenger of Allah (pbuh) forbade us to pray:</p>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>When the sun has clearly started to rise until it is fully risen;</li>
+                    <li>When it is directly overhead at midday until it has passed its zenith/highest point; and</li>
+                    <li>When the sun becomes pale and starts to set until it has fully set.</li>
+                  </ol>
+                  <p className="mt-4 text-[13px] text-muted-foreground">
+                    In this Hadith it has also been mentioned that the last time for our Isha prayer is the midnight.{" "}
+                    <Link to="/hadith?q=Sahih Muslim 223" className="text-primary hover:underline font-medium">
+                      (Sahih Muslim Book 5, Hadith 223)
+                    </Link>
+                  </p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    Our Prophet(pbuh) said: "No prayer after two prayers, i.e. after the Fajr prayer till the sun rises and after the `Asr prayer till the sun sets."{" "}
+                    <Link to="/hadith?q=Sahih al-Bukhari 1197" className="text-primary hover:underline font-medium">
+                      (Sahih al-Bukhari; Hadith 1197)
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
