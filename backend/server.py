@@ -49,11 +49,17 @@ from slowapi.middleware import SlowAPIMiddleware
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 app = FastAPI(title="DeenGuide API")
 
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+ALLOWED_ORIGINS = [
+    "https://deen-guide-3utk.vercel.app",
+    "https://deen-guide.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=False if "*" in CORS_ORIGINS else True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
