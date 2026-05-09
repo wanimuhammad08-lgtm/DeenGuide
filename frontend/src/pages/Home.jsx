@@ -211,6 +211,7 @@ export default function Home() {
   const { current, next } = useMemo(() => {
     if (!times) return { current: null, next: null };
     return getCurrentPrayer(times);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [times, now]);
 
   // Geolocation
@@ -264,7 +265,7 @@ export default function Home() {
   const progress = useMemo(() => {
     if (!currentPrayer?.ms || !nextPrayer?.ms) return 0;
     const total = nextPrayer.ms - currentPrayer.ms;
-    const elapsed = Date.now() - currentPrayer.ms;
+    const elapsed = now - currentPrayer.ms;
     return Math.min(100, Math.max(0, (elapsed / total) * 100));
   }, [now, currentPrayer, nextPrayer]);
 
