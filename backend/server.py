@@ -1299,18 +1299,6 @@ async def get_dua_bookmarks():
 # ── Mount ──
 app.include_router(api)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(",") if os.environ.get("CORS_ORIGINS") else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Fix for allow_origins=["*"] with allow_credentials=True which is invalid in some browsers/frameworks
-if "*" in app.user_middleware[0].kwargs.get("allow_origins", []):
-    app.user_middleware[0].kwargs["allow_origins"] = []
-    app.user_middleware[0].kwargs["allow_origin_regex"] = ".*"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
