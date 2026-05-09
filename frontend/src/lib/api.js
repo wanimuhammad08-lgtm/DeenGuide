@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Zero-config: Automatically use live backend when not on localhost
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 
-  (window.location.hostname === "localhost" ? "http://localhost:8001" : "https://deenguide.onrender.com");
+  (window.location.hostname === "localhost" ? "http://127.0.0.1:8001" : "https://deenguide.onrender.com");
 export const API = `${BACKEND_URL}/api`;
 
 const http = axios.create({ baseURL: API, timeout: 60000 });
