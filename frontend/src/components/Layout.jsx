@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Home, BookOpen, Hand, Bookmark, LayoutGrid, Menu, X, Sparkles, Clock, ScrollText } from "lucide-react";
+import { Home, BookOpen, Hand, Bookmark, LayoutGrid, Menu, X, Sparkles, ScrollText } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -15,7 +15,7 @@ const navItems = [
 const desktopNavItems = [
   { to: "/ask", label: "Ask AI", icon: Sparkles, testid: "nav-ask" },
   { to: "/quran", label: "Quran", icon: BookOpen, testid: "nav-quran" },
-  { to: "/prayer-times", label: "Prayer", icon: Clock, testid: "nav-prayer" },
+  { to: "/hadith", label: "Hadith", icon: ScrollText, testid: "nav-hadith" },
   { to: "/duas", label: "Dua", icon: Hand, testid: "nav-duas" },
   { to: "/more", label: "More", icon: LayoutGrid, testid: "nav-more" },
 ];
@@ -38,7 +38,7 @@ export const Layout = () => {
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
           <Brand />
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             {desktopNavItems.map((n) => (
               <NavLink
                 key={n.to}
@@ -50,7 +50,7 @@ export const Layout = () => {
                   }`
                 }
               >
-                <n.icon className="h-4 w-4" />
+                <n.icon className="h-5 w-5" />
                 {n.label}
               </NavLink>
             ))}
@@ -59,16 +59,16 @@ export const Layout = () => {
             <ThemeToggle />
             <button
               data-testid="mobile-menu-toggle"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card md:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 lg:hidden"
               onClick={() => setOpen((v) => !v)}
               aria-label="Open menu"
             >
-              {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
         {open && (
-          <div className="border-t border-border bg-background md:hidden">
+          <div className="border-t border-border bg-background lg:hidden">
             <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
               {navItems.map((n) => (
                 <NavLink
@@ -82,7 +82,7 @@ export const Layout = () => {
                     }`
                   }
                 >
-                  <n.icon className="h-4 w-4" />
+                  <n.icon className="h-5 w-5" />
                   {n.label}
                 </NavLink>
               ))}
@@ -91,12 +91,12 @@ export const Layout = () => {
         )}
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 pb-24 pt-3 sm:px-8 sm:pb-12 sm:pt-6">
+      <main className="mx-auto max-w-7xl px-4 pb-24 pt-3 sm:px-8 sm:pt-6 lg:pb-12">
         <Outlet />
       </main>
 
       {/* Bottom mobile nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-7xl grid-cols-6">
           {navItems.map((n) => (
             <NavLink
@@ -117,7 +117,7 @@ export const Layout = () => {
         </div>
       </nav>
 
-      <footer className="hidden border-t border-border bg-card/40 py-8 text-center text-xs text-muted-foreground md:block">
+      <footer className="hidden border-t border-border bg-card/40 py-8 text-center text-xs text-muted-foreground lg:block">
         <p>DeenGuide · An AI-powered Islamic knowledge companion · Always verify with scholars</p>
       </footer>
     </div>

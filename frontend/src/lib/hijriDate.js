@@ -139,7 +139,7 @@ export async function fetchTodayHijri(lat, lng) {
   if (cache[key]) return cache[key];
 
   try {
-    const url = `${ALADHAN_BASE}/timingsByCity/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lng}&method=1`;
+    const url = `${ALADHAN_BASE}/timings/${dd}-${mm}-${yyyy}?latitude=${lat}&longitude=${lng}&method=1`;
     const res = await fetch(url);
     const data = await res.json();
     if (data.code === 200 && data.data?.date?.hijri) {

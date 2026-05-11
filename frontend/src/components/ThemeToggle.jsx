@@ -25,9 +25,9 @@ export const ThemeToggle = () => {
       data-testid="theme-toggle"
       onClick={toggle}
       aria-label="Toggle theme"
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground transition-all hover:bg-accent hover:text-accent-foreground active:scale-95"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95"
     >
-      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </button>
   );
 };

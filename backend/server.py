@@ -250,6 +250,7 @@ class AskRequest(BaseModel):
     question: str
     mode: str = "deep"  # "simple" | "deep"
     session_id: Optional[str] = None
+    conversation_history: Optional[List[Dict[str, str]]] = None  # [{"role": "user"|"assistant", "content": "..."}]
 
 
 class QuranRef(BaseModel):
@@ -471,22 +472,24 @@ SYSTEM_PROMPT = """You are DeenGuide AI, an empathetic, highly knowledgeable Isl
 SCOPE & MISSION:
 - You MUST answer ALL user queries, whether strictly religious or about daily life struggles (e.g., mental health, relationship advice, missing an ex, breakups, grief, stress). 
 - NEVER reject a question for seeming secular. Instead, masterfully pivot the response by anchoring their natural human situation into Islamic wisdom, spiritual healing, Qadar (Divine decree), Sabr (patience), and Allah's infinite mercy.
+- For sensitive theological questions (e.g., fate of specific individuals, controversial rulings), give the AUTHENTIC Sunni scholarly position clearly and directly, citing evidence. Do NOT dodge or give vague answers.
 
 STYLE & TONE:
-- You must EXACTLY match the warm, compassionate, highly articulate tone of "MuslimGPT".
-- Start with an empathetic greeting (e.g., "My dear friend," or "Assalamu Alaikum!").
-- Deliver your message in dense, beautiful, and concise paragraphs. Do NOT write long essays.
+- Start with a brief empathetic greeting (e.g., "Assalamu Alaikum!").
+- Be DIRECT and CLEAR. Give the ruling or answer FIRST, then explain the evidence.
+- For "how to" questions: provide NUMBERED STEPS with clear detail.
+- For "is X halal/haram" questions: state the majority scholarly position CLEARLY in the first sentence, then provide evidence.
 - Address the deeper Wisdom (Hikmah) behind the spiritual advice or ruling.
 
 CORE RULES (MANDATORY):
 1. Grounding: Anchor all responses strictly in the Qur'an and authentic Sunnah.
-2. Custom Hadith: Ignore provided context context if weak. Internally source 1-2 famous, highly relevant Hadiths (from Bukhari or Muslim) and return the full English text via `custom_hadiths`.
+2. Custom Hadith: Internally source 1-3 famous, highly relevant Hadiths (preferably from Bukhari or Muslim) and return the full English text via `custom_hadiths`. Include narrator chain if known.
 3. Quran Verses: Include 1-2 precise relevant verses in `quran_refs`.
-4. Fiqh Insight: You MUST populate `scholarly_notes` with an authentic paragraph detailing how the consensus of Sunni scholars (or the 4 Madhahib: Hanafi, Maliki, Shafi'i, Hanbali) view the general principle underlying this question.
+4. Fiqh Insight: You MUST populate `scholarly_notes` with an authentic paragraph detailing how the 4 Madhahib (Hanafi, Maliki, Shafi'i, Hanbali) or major scholars view this issue. Mention specific scholars by name.
 
 ALWAYS respond with ONLY this JSON:
 {
-  "detailed_answer": "<Exactly ONE dense, comforting introductory paragraph (80-120 words). Frame their struggle with warmth and summarize the initial Islamic view or spiritual solace.>",
+  "detailed_answer": "<A comprehensive answer (150-300 words). For step-by-step questions, use numbered steps. For rulings, state the ruling clearly first then explain. Be thorough but not repetitive.>",
   "quran_refs": [
     {
       "surah": <int>,
@@ -500,19 +503,20 @@ ALWAYS respond with ONLY this JSON:
     {
       "collection": "Sahih al-Bukhari",
       "number": "1234",
+      "narrator": "<narrator if known>",
       "english": "<full translation of hadith>",
       "authenticity": "Sahih"
     }
   ],
-  "scholarly_notes": "<Exactly ONE paragraph clearly synthesizing the authentic scholarly consensus or general perspectives of the 4 Madhahib relevant to this principle. Keep it highly trustworthy.>",
-  "conclusion": "<ONE short final sentence or very concise conclusion paragraph (usually starting with 'Therefore'). Finalizing the takeaway.>",
+  "scholarly_notes": "<ONE paragraph clearly synthesizing the authentic scholarly consensus or the perspectives of the 4 Madhahib relevant to this issue. Mention specific scholars (Ibn Taymiyyah, An-Nawawi, Ibn Baz, Al-Albani, etc.) where relevant.>",
+  "conclusion": "<ONE concise conclusion paragraph summarizing the takeaway and ending with practical advice or 'And Allah knows best.'>",
   "evidence_type": "Direct Text Evidence",
   "related_duas": ["<title>"]
 }
 """
 
 
-async def generate_answer(question: str, mode: str, session_id: str, context: str) -> Dict[str, Any]:
+async def generate_answer(question: str, mode: str, session_id: str, context: str, conversation_history: list = None) -> Dict[str, Any]:
     if not groq_client:
         raise RuntimeError("Groq API key not configured")
 
@@ -527,15 +531,20 @@ RELEVANT CONTEXT (use what fits, ignore the rest):
 
 Respond ONLY with the JSON object as instructed. No markdown fences."""
 
+    # Build messages with conversation history for multi-turn context
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if conversation_history:
+        # Include last 6 turns max to stay within token limits
+        for turn in conversation_history[-6:]:
+            messages.append({"role": turn["role"], "content": turn["content"]})
+    messages.append({"role": "user", "content": user_text})
+
     response = await asyncio.to_thread(
         groq_client.chat.completions.create,
         model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_text},
-        ],
+        messages=messages,
         temperature=0.3,
-        max_tokens=1200,
+        max_tokens=2500,
         response_format={"type": "json_object"},
     )
 
@@ -632,7 +641,7 @@ async def ai_ask(req: AskRequest):
 
     fallback_used = False
     try:
-        data = await generate_answer(req.question, req.mode, session_id, context)
+        data = await generate_answer(req.question, req.mode, session_id, context, req.conversation_history or [])
     except Exception:
         logging.exception("AI generation failed; serving local fallback")
         fallback_used = True
@@ -654,10 +663,22 @@ async def ai_ask(req: AskRequest):
 
     # Hydrate custom hadiths provided by the AI (bypasses numbering mismatches)
     custom_hadiths = data.get("custom_hadiths") or []
+    # Map full collection names to API slugs
+    _coll_slug_map = {
+        "sahih al-bukhari": "bukhari", "bukhari": "bukhari",
+        "sahih muslim": "muslim", "muslim": "muslim",
+        "sunan abu dawood": "abudawud", "sunan abu dawud": "abudawud", "abudawud": "abudawud",
+        "jami` at-tirmidhi": "tirmidhi", "jami at-tirmidhi": "tirmidhi", "tirmidhi": "tirmidhi",
+        "sunan an-nasa'i": "nasai", "nasai": "nasai",
+        "sunan ibn majah": "ibnmajah", "ibn majah": "ibnmajah", "ibnmajah": "ibnmajah",
+        "muwatta imam malik": "malik", "malik": "malik", "muwatta": "malik",
+    }
     hadith_refs = []
     for ch in custom_hadiths:
+        raw_coll = ch.get("collection", "")
+        slug = _coll_slug_map.get(raw_coll.lower(), raw_coll)
         hadith_refs.append({
-            "collection": ch.get("collection", ""),
+            "collection": slug,
             "number": ch.get("number", ""),
             "narrator": ch.get("narrator", ""),
             "arabic": ch.get("arabic", ""),

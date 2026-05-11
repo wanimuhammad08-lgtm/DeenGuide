@@ -66,16 +66,27 @@ export default function SurahReader() {
   const [searchQuery, setSearchQuery] = useState("");
   const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:font-size') || '3', 10));
   const [isScrolled, setIsScrolled] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollProgressRef = useRef(0);
+  const stickyHeaderRef = useRef(null);
+  const scrollBarRef = useRef(null);
   const [readingView, setReadingView] = useState("arabic"); // "arabic" or "translation"
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 250);
-      
-      const totalHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const progress = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
-      setScrollProgress(progress);
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const scrolled = window.scrollY > 250;
+        // Only trigger re-render when crossing the threshold
+        setIsScrolled(prev => prev !== scrolled ? scrolled : prev);
+        
+        const totalHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const progress = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
+        scrollProgressRef.current = progress;
+        if (scrollBarRef.current) scrollBarRef.current.style.width = `${progress}%`;
+        ticking = false;
+      });
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -138,13 +149,20 @@ export default function SurahReader() {
   });
 
   const [playing, setPlaying] = useState(false);
-  const [currentIdx, setCurrentIdx] = useState(-1);
+  const playingRef = useRef(false); // Essential for async chain cancellation
+  const [playingAyahIdx, setPlayingAyahIdx] = useState(-1); // only used for initial render, DOM handles updates
+  const progressBarRef = useRef(null);
+  const progressThumbRef = useRef(null);
+  const timeTextRef = useRef(null);
+  const durationTextRef = useRef(null);
   const audioRef = useRef(null);
   const bismillahPlayedRef = useRef(false);
-  const mixRef = useRef(audioMix); // for closures in playback chain
-  const currentIdxRef = useRef(-1);  // mirrors currentIdx for use inside callbacks
-  const pausedIdxRef = useRef(-1);   // saved position when user pauses
+  const mixRef = useRef(audioMix); 
+  const currentIdxRef = useRef(-1);
+  const pausedIdxRef = useRef(-1);
   const autoScrollRef = useRef(true);
+  const singleModeRef = useRef(false);
+  const activeAyahNumberRef = useRef(null); // tracks which ayah row is highlighted
   
   // Surah Info Modal
   const [isSurahInfoOpen, setIsSurahInfoOpen] = useState(false);
@@ -155,7 +173,6 @@ export default function SurahReader() {
   const [isTranslationDropdownOpen, setIsTranslationDropdownOpen] = useState(false);
 
   // Audio Player State
-  const [audioProgress, setAudioProgress] = useState({ currentTime: 0, duration: 0 });
   const [isAudioMenuOpen, setIsAudioMenuOpen] = useState(false);
   const [isAudioPlayerVisible, setIsAudioPlayerVisible] = useState(false);
   const [audioMenuPanel, setAudioMenuPanel] = useState(null);
@@ -299,6 +316,7 @@ export default function SurahReader() {
               v.audio.url.startsWith('//') ? `https:${v.audio.url}` :
               `https://verses.quran.com/${v.audio.url}`
             ) : null,
+            audioSegments: v.audio?.segments || [],
             words: v.words.map(w => ({
               id: w.id,
               position: w.position,
@@ -373,7 +391,12 @@ export default function SurahReader() {
     }
     tts.stop();
     setPlaying(false);
-    setCurrentIdx(-1);
+    playingRef.current = false;
+    singleModeRef.current = false;
+    // Remove row highlight via DOM
+    clearRowHighlight(activeAyahNumberRef.current);
+    activeAyahNumberRef.current = null;
+    setPlayingAyahIdx(-1);
     currentIdxRef.current = -1;
   }, [tts]);
 
@@ -404,42 +427,106 @@ export default function SurahReader() {
       const tryPlay = (attemptLeft) => {
         if (audioRef.current) {
           audioRef.current.pause();
+          audioRef.current.onended = null;
+          audioRef.current.onerror = null;
           audioRef.current = null;
         }
         
         const a = new Audio(safeUrl);
         a.playbackRate = parseFloat(localStorage.getItem('deenguide:speed') || '1');
         a.volume = parseFloat(localStorage.getItem('deenguide:volume') || '1');
+        audioRef.current = a;
         
         a.onended = () => resolve(true);
+        
         a.onerror = () => {
+          if (audioRef.current !== a) return; // superseded by a newer call
           if (attemptLeft > 0) {
-            console.log(`Retrying audio playback... ${attemptLeft} attempts left.`);
-            setTimeout(() => tryPlay(attemptLeft - 1), 500);
+            setTimeout(() => tryPlay(attemptLeft - 1), 800);
           } else {
             resolve(false);
           }
         };
         
-        a.addEventListener("timeupdate", () => {
-          setAudioProgress({ currentTime: a.currentTime, duration: a.duration });
-        });
         a.addEventListener("loadedmetadata", () => {
-          setAudioProgress({ currentTime: 0, duration: a.duration });
+          if (audioRef.current !== a) return;
+          // Update progress bar DOM directly — no React re-render
+          if (progressBarRef.current) progressBarRef.current.style.width = '0%';
+          if (progressThumbRef.current) progressThumbRef.current.style.left = 'calc(0% - 6px)';
+          if (timeTextRef.current) timeTextRef.current.innerText = '00:00';
+          if (durationTextRef.current && a.duration > 0) {
+            const dmin = Math.floor(a.duration / 60).toString().padStart(2, '0');
+            const dsec = Math.floor(a.duration % 60).toString().padStart(2, '0');
+            durationTextRef.current.innerText = `${dmin}:${dsec}`;
+          }
         });
 
-        a.play().catch((e) => {
+        a.play().catch(() => {
+          if (audioRef.current !== a) return;
           if (attemptLeft > 0) {
-            setTimeout(() => tryPlay(attemptLeft - 1), 500);
+            setTimeout(() => tryPlay(attemptLeft - 1), 800);
           } else {
             resolve(false);
           }
         });
-        audioRef.current = a;
       };
 
       tryPlay(retries);
     }), []);
+
+  // Master Animation Loop for Smooth Progress Bar Updates
+  // Only runs when audio is actually playing to avoid wasting CPU
+  const animFrameRef = useRef(null);
+
+  const startAnimLoop = useCallback(() => {
+    if (animFrameRef.current) return; // already running
+    const tick = () => {
+      // Keep running as long as overall playback session is active
+      if (!playingRef.current) {
+        animFrameRef.current = null;
+        return;
+      }
+      const a = audioRef.current;
+      if (a && !a.paused && !a.ended) {
+        const curTime = a.currentTime;
+        const dur = a.duration || 0;
+        const pct = dur > 0 ? (curTime / dur) * 100 : 0;
+        if (progressBarRef.current) progressBarRef.current.style.width = `${pct}%`;
+        if (progressThumbRef.current) progressThumbRef.current.style.left = `calc(${pct}% - 6px)`;
+        if (timeTextRef.current) {
+          const min = Math.floor(curTime / 60).toString().padStart(2, '0');
+          const sec = Math.floor(curTime % 60).toString().padStart(2, '0');
+          timeTextRef.current.innerText = `${min}:${sec}`;
+        }
+        if (durationTextRef.current && dur > 0) {
+          const dmin = Math.floor(dur / 60).toString().padStart(2, '0');
+          const dsec = Math.floor(dur % 60).toString().padStart(2, '0');
+          durationTextRef.current.innerText = `${dmin}:${dsec}`;
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // Start/stop animation loop based on playing state
+  useEffect(() => {
+    if (playing) {
+      startAnimLoop();
+    } else {
+      // Ensure highlight is cleared when playback fully stops (not just paused)
+      if (currentIdxRef.current === -1) {
+        clearRowHighlight(activeAyahNumberRef.current);
+        activeAyahNumberRef.current = null;
+      }
+    }
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+    };
+  }, [playing, startAnimLoop]);
 
   const translationAudioUrl = useCallback((surahNum, ayahNum) => {
     const e = editions.find((x) => x.id === translationEditions[0]);
@@ -480,9 +567,14 @@ export default function SurahReader() {
       return;
     }
     const ayah = data.ayahs[idx];
-    setCurrentIdx(idx);
+    // Highlight row + update play button via DOM (zero React re-renders of the list)
+    clearRowHighlight(activeAyahNumberRef.current);
+    activeAyahNumberRef.current = ayah.number;
+    setRowHighlight(ayah.number);
     currentIdxRef.current = idx;
+    setPlayingAyahIdx(idx); // still set for initial render consistency
     setPlaying(true);
+    playingRef.current = true;
     setIsAudioPlayerVisible(true);
     // Track audio play
     if (idx === 0) trackEvent('audio_played', 'quran', { surah: data?.number, surah_name: data?.englishName });
@@ -497,16 +589,33 @@ export default function SurahReader() {
         const text = ayah.translations[0].text;
         const url = translationAudioUrl(data.number, ayah.number);
         let played = false;
-        if (url) played = await playAudioAsync(url);
-        if (!played) await speakAsync(text, translationLang);
+        if (url) {
+          played = await playAudioAsync(url);
+          if (!playingRef.current) return; // Guard after await
+        }
+        if (!played) {
+          await speakAsync(text, translationLang);
+          if (!playingRef.current) return; // Guard after await
+        }
       }
       if (mix.tafsir) {
         const existing = tafsir[ayah.number]?.text;
         const text = existing || (await fetchAyahTafsir(ayah.number));
+        if (!playingRef.current) return;
         if (text) {
           setTafsir((t) => ({ ...t, [ayah.number]: { open: true, loading: false, text } }));
           await speakAsync(text, tafsirLang);
+          if (!playingRef.current) return;
         }
+      }
+      
+      if (!playingRef.current) return; // Final guard before advancing
+      
+      // Handle single-ayah mode (per-ayah play button)
+      if (singleModeRef.current) {
+        singleModeRef.current = false;
+        stopPlayback();
+        return;
       }
       // Handle repeat-one
       const repeat = localStorage.getItem('deenguide:repeat') || 'off';
@@ -515,6 +624,7 @@ export default function SurahReader() {
     };
 
     const playArabicThenChain = async () => {
+      if (!playingRef.current) return;
       try {
         const currentReciter = reciters.find((r) => r.id === (localStorage.getItem(RECITER_KEY) || "ar.alafasy"));
         localStorage.setItem("deenguide:last-audio", JSON.stringify({
@@ -528,21 +638,55 @@ export default function SurahReader() {
       if (idx === 0 && mixRef.current.recite && data.bismillah_audio && !bismillahPlayedRef.current) {
         bismillahPlayedRef.current = true;
         await playAudioAsync(data.bismillah_audio);
+        if (!playingRef.current) return;
       }
       if (mixRef.current.recite && ayah.audio) {
         const ok = await playAudioAsync(ayah.audio);
-        if (!ok) toast.error("Recitation audio failed");
+        if (!playingRef.current) return;
+        if (!ok) toast.error("Recitation audio failed — skipping");
       }
+      
+      if (!playingRef.current) return;
       await continueChain();
     };
     playArabicThenChain();
   }, [data, stopPlayback, speakAsync, playAudioAsync, translationAudioUrl, translationLang, tafsirLang, tafsir, fetchAyahTafsir, reciters]);
 
+  const PLAY_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 fill-current"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  const PAUSE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5" style="color:var(--primary)"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
+  const clearRowHighlight = (ayahNumber) => {
+    if (ayahNumber == null) return;
+    const el = document.querySelector(`[data-ayah-row="${ayahNumber}"]`);
+    if (el) {
+      el.classList.remove('bg-primary/5', '-mx-4', 'px-4', 'rounded-xl', 'border-l-2', 'border-l-primary/40');
+      const btn = el.querySelector('[data-play-btn]');
+      if (btn) btn.innerHTML = PLAY_ICON;
+    }
+  };
+
+  const setRowHighlight = (ayahNumber) => {
+    const el = document.querySelector(`[data-ayah-row="${ayahNumber}"]`);
+    if (el) {
+      el.classList.add('bg-primary/5', '-mx-4', 'px-4', 'rounded-xl', 'border-l-2', 'border-l-primary/40');
+      const btn = el.querySelector('[data-play-btn]');
+      if (btn) btn.innerHTML = PAUSE_ICON;
+    }
+  };
+
+  const setActiveRowIcon = (icon) => {
+    if (activeAyahNumberRef.current == null) return;
+    const el = document.querySelector(`[data-ayah-row="${activeAyahNumberRef.current}"] [data-play-btn]`);
+    if (el) el.innerHTML = icon;
+  };
+
   const togglePlayAll = () => {
     if (playing) {
       setPlaying(false);
+      playingRef.current = false;
       if (audioRef.current) audioRef.current.pause();
       window.speechSynthesis.pause();
+      setActiveRowIcon(PLAY_ICON);
     } else {
       if (!audioMix.recite && !audioMix.translate && !audioMix.tafsir) {
         toast.error("Enable at least one audio option (Recite / Translate / Tafsir)");
@@ -550,8 +694,10 @@ export default function SurahReader() {
       }
       if (currentIdxRef.current !== -1) {
         setPlaying(true);
+        playingRef.current = true;
         if (audioRef.current) audioRef.current.play().catch(() => {});
         window.speechSynthesis.resume();
+        setActiveRowIcon(PAUSE_ICON);
       } else {
         bismillahPlayedRef.current = false;
         playFromIndex(0);
@@ -561,7 +707,7 @@ export default function SurahReader() {
 
   // Download current ayah audio
   const handleDownload = () => {
-    const ayah = data?.ayahs[currentIdx >= 0 ? currentIdx : 0];
+    const ayah = data?.ayahs[currentIdxRef.current >= 0 ? currentIdxRef.current : 0];
     const url = ayah?.audio;
     if (!url) { toast.error("No audio available to download"); return; }
     const a = document.createElement('a');
@@ -593,17 +739,22 @@ export default function SurahReader() {
   };
 
   const playSingle = (idx) => {
-    if (currentIdx === idx && playing) {
+    if (currentIdxRef.current === idx && playing) {
       setPlaying(false);
+      playingRef.current = false;
       if (audioRef.current) audioRef.current.pause();
       window.speechSynthesis.pause();
-    } else if (currentIdx === idx && !playing) {
+      setActiveRowIcon(PLAY_ICON);
+    } else if (currentIdxRef.current === idx && !playing) {
       setPlaying(true);
+      playingRef.current = true;
       if (audioRef.current) audioRef.current.play().catch(() => {});
       window.speechSynthesis.resume();
+      setActiveRowIcon(PAUSE_ICON);
     } else {
       stopPlayback();
       bismillahPlayedRef.current = true;
+      singleModeRef.current = true;
       playFromIndex(idx);
     }
   };
@@ -972,7 +1123,7 @@ export default function SurahReader() {
                   </button>
                 </div>
               </div>
-              <div className="absolute bottom-0 left-0 h-[3px] bg-[#178b50] transition-all duration-75 ease-out" style={{ width: `${scrollProgress}%` }} />
+              <div ref={scrollBarRef} className="absolute bottom-0 left-0 h-[3px] bg-[#178b50] transition-all duration-75 ease-out" style={{ width: '0%' }} />
             </div>
 
             {/* Top Header (Static, disappears on scroll) */}
@@ -1131,20 +1282,19 @@ export default function SurahReader() {
               {data.ayahs.map((a, idx) => {
                 const bkId = `${data.number}:${a.number}`;
                 const saved = isBookmarked("ayahs", bkId);
-                const isCurrent = currentIdx === idx && playing;
-
                 return (
                   <div
                     key={a.number}
                     data-ayah-row={a.number}
-                    className={`pb-4 border-b border-border/30 last:border-0 transition-colors ${isCurrent ? "bg-accent/10 -mx-4 px-4 rounded-xl" : ""}`}
+                    className="pb-4 border-b border-border/30 last:border-0 transition-colors"
+                    style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 200px' }}
                   >
                     {/* Verse Header Controls */}
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-5 text-muted-foreground">
                         <span className="text-[14px] font-bold text-primary hover:underline cursor-pointer">{data.number}:{a.number}</span>
-                        <button onClick={() => playSingle(idx)} className="text-foreground hover:text-primary transition-colors" title="Play Verse">
-                          {isCurrent ? <Pause className="h-5 w-5 text-primary" /> : <Play className="h-5 w-5 fill-current" />}
+                        <button data-play-btn onClick={() => playSingle(idx)} className="text-foreground hover:text-primary transition-colors" title="Play Verse">
+                          <Play className="h-5 w-5 fill-current" />
                         </button>
                         <button 
                           onClick={() => {
@@ -1211,25 +1361,31 @@ export default function SurahReader() {
                            {a.indopak} <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>
                          </div>
                       ) : (
-                        a.words.map((w, i) => (
-                          <div key={w.id} className="group relative flex flex-col items-center justify-start cursor-pointer hover:bg-accent/20 rounded p-1 transition-colors text-center">
-                            <span 
-                              className="font-arabic leading-[1.3] text-foreground transition-all duration-300" 
-                              style={{ fontSize: w.char_type_name === 'end' ? `max(16px, calc(${getArabicFontSize()} * 0.6))` : getArabicFontSize() }}
-                              dangerouslySetInnerHTML={{ __html: w.char_type_name === 'end' ? `<span class="text-primary">﴾${w.arabic}﴿</span>` : (arabicScript === 'tajweed' ? w.tajweed : w.arabic) }}
-                            />
-                            {w.char_type_name !== 'end' && (wbwSettings.transliteration || wbwSettings.translation) && (
-                              <div className="flex flex-col items-center mt-1.5 space-y-0.5">
-                                {wbwSettings.transliteration && w.transliteration && (
-                                  <span className="text-[12px] font-medium text-primary opacity-80">{w.transliteration}</span>
-                                )}
-                                {wbwSettings.translation && w.translation && (
-                                  <span className="text-[13.5px] font-medium text-foreground/80">{w.translation}</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))
+                        a.words.map((w, i) => {
+                          return (
+                            <div 
+                              key={w.id} 
+                              id={`w-${idx}-${i}`}
+                              className="group relative flex flex-col items-center justify-start cursor-pointer rounded-lg p-1 px-1.5 text-center hover:bg-accent/20"
+                            >
+                              <span 
+                                className="font-arabic leading-[1.3] text-foreground" 
+                                style={{ fontSize: w.char_type_name === 'end' ? `max(16px, calc(${getArabicFontSize()} * 0.6))` : getArabicFontSize() }}
+                                dangerouslySetInnerHTML={{ __html: w.char_type_name === 'end' ? `<span class="text-primary">﴾${w.arabic}﴿</span>` : (arabicScript === 'tajweed' ? w.tajweed : w.arabic) }}
+                              />
+                              {w.char_type_name !== 'end' && (wbwSettings.transliteration || wbwSettings.translation) && (
+                                <div className="flex flex-col items-center mt-1.5 space-y-0.5">
+                                  {wbwSettings.transliteration && w.transliteration && (
+                                    <span className="text-[12px] font-medium text-primary opacity-80">{w.transliteration}</span>
+                                  )}
+                                  {wbwSettings.translation && w.translation && (
+                                    <span className="text-[13.5px] font-medium text-foreground/80">{w.translation}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
 
@@ -1350,25 +1506,37 @@ export default function SurahReader() {
       {/* Sticky Audio Player */}
       {isAudioPlayerVisible && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border/60 shadow-[0_-8px_30px_rgb(0,0,0,0.08)]">
-          {/* Progress Bar */}
-          <div className="relative w-full h-1.5 bg-accent cursor-pointer group">
+            {/* Progress Bar */}
             <div 
-              className="absolute top-0 left-0 h-full bg-foreground transition-all duration-100 ease-linear"
-              style={{ width: `${audioProgress.duration > 0 ? (audioProgress.currentTime / audioProgress.duration) * 100 : 0}%` }}
-            />
-            {/* Playhead thumb (visible on hover) */}
-            <div 
-              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ left: `calc(${audioProgress.duration > 0 ? (audioProgress.currentTime / audioProgress.duration) * 100 : 0}% - 6px)` }}
-            />
-          </div>
-
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-            {/* Time Tracker */}
-            <div className="text-[12px] font-bold text-muted-foreground w-[60px]">
-              {Math.floor(audioProgress.currentTime / 60).toString().padStart(2, '0')}:
-              {Math.floor(audioProgress.currentTime % 60).toString().padStart(2, '0')}
+              className="relative w-full h-1.5 bg-accent cursor-pointer group"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                if (audioRef.current && audioRef.current.duration) {
+                  audioRef.current.currentTime = percent * audioRef.current.duration;
+                  // Update DOM directly
+                  if (progressBarRef.current) progressBarRef.current.style.width = `${percent * 100}%`;
+                  if (progressThumbRef.current) progressThumbRef.current.style.left = `calc(${percent * 100}% - 6px)`;
+                }
+              }}
+            >
+              <div 
+                ref={progressBarRef}
+                className="absolute top-0 left-0 h-full bg-foreground transition-[width] duration-75 ease-out"
+                style={{ width: '0%' }}
+              />
+              <div 
+                ref={progressThumbRef}
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ left: 'calc(0% - 6px)' }}
+              />
             </div>
+
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+              {/* Time Tracker */}
+              <div ref={timeTextRef} className="text-[12px] font-bold text-muted-foreground w-[60px]">
+                00:00
+              </div>
 
             {/* Main Controls */}
             <div className="flex items-center gap-6 sm:gap-10">
@@ -1389,7 +1557,8 @@ export default function SurahReader() {
                 {isAudioMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => { setIsAudioMenuOpen(false); setAudioMenuPanel(null); }} />
-                    <div className="absolute bottom-full left-0 mb-4 w-[300px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.18)] overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-200 origin-bottom-left">
+                    <div className="absolute bottom-full left-0 mb-4 w-[300px] bg-card border border-border/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.18)] z-50 animate-in slide-in-from-bottom-2 fade-in duration-200 origin-bottom-left overflow-hidden"
+                      style={{ maxHeight: 'min(420px, calc(100vh - 120px))', overflowY: 'auto' }}>
 
                       {/* ── Main Menu ── */}
                       {!audioMenuPanel && (
@@ -1448,7 +1617,7 @@ export default function SurahReader() {
                             {repeatTab === 'single' && (
                               <div className="flex items-center gap-2 bg-accent/20 rounded-lg px-3 py-2 border border-border/40">
                                 <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="text-[14px] font-medium">{data ? `${data.number}:${currentIdx >= 0 ? data.ayahs[currentIdx]?.number ?? 1 : 1}` : '1:1'}</span>
+                                <span className="text-[14px] font-medium">{data ? `${data.number}:${currentIdxRef.current >= 0 ? data.ayahs[currentIdxRef.current]?.number ?? 1 : 1}` : '1:1'}</span>
                               </div>
                             )}
                             {repeatTab === 'range' && (
@@ -1457,7 +1626,7 @@ export default function SurahReader() {
                                   <div className="text-[10px] font-bold text-muted-foreground mb-1">From Verse:</div>
                                   <div className="flex items-center gap-1.5 bg-accent/20 rounded-lg px-2.5 py-1.5 border border-border/40">
                                     <Search className="h-3 w-3 text-muted-foreground shrink-0" />
-                                    <span className="text-[13px] font-medium">{data ? `${data.number}:${currentIdx >= 0 ? data.ayahs[currentIdx]?.number ?? 1 : 1}` : '1:1'}</span>
+                                    <span className="text-[13px] font-medium">{data ? `${data.number}:${currentIdxRef.current >= 0 ? data.ayahs[currentIdxRef.current]?.number ?? 1 : 1}` : '1:1'}</span>
                                   </div>
                                 </div>
                                 <div className="flex-1">
@@ -1494,7 +1663,7 @@ export default function SurahReader() {
                               const mode = repeatTab === 'single' ? 'one' : 'all';
                               cycleRepeat(mode);
                               setAudioMenuPanel(null); setIsAudioMenuOpen(false);
-                              const startIdx = currentIdx >= 0 ? currentIdx : 0;
+                              const startIdx = currentIdxRef.current >= 0 ? currentIdxRef.current : 0;
                               stopPlayback(); bismillahPlayedRef.current = true; playFromIndex(startIdx);
                             }} className="flex-1 py-3 text-[14px] font-bold text-[#178b50] hover:bg-[#178b50]/5 transition-colors">Start Playing</button>
                           </div>
@@ -1632,9 +1801,9 @@ export default function SurahReader() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => { if (currentIdx > 0) playFromIndex(currentIdx - 1); }}
-                    disabled={currentIdx <= 0}
-                    className={`p-2 rounded-full transition-colors ${currentIdx <= 0 ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-foreground hover:bg-accent'}`}
+                    onClick={() => { if (currentIdxRef.current > 0) playFromIndex(currentIdxRef.current - 1); }}
+                    disabled={currentIdxRef.current <= 0}
+                    className={`p-2 rounded-full transition-colors ${currentIdxRef.current <= 0 ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-foreground hover:bg-accent'}`}
                   >
                     <Rewind className="h-6 w-6 fill-current" />
                   </button>
@@ -1657,9 +1826,9 @@ export default function SurahReader() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => { if (data && currentIdx < data.ayahs.length - 1) playFromIndex(currentIdx + 1); }}
-                    disabled={!data || currentIdx >= data.ayahs.length - 1}
-                    className={`p-2 rounded-full transition-colors ${!data || currentIdx >= data.ayahs.length - 1 ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-foreground hover:bg-accent'}`}
+                    onClick={() => { if (data && currentIdxRef.current < data.ayahs.length - 1) playFromIndex(currentIdxRef.current + 1); }}
+                    disabled={!data || currentIdxRef.current >= data.ayahs.length - 1}
+                    className={`p-2 rounded-full transition-colors ${!data || currentIdxRef.current >= data.ayahs.length - 1 ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-foreground hover:bg-accent'}`}
                   >
                     <FastForward className="h-6 w-6 fill-current" />
                   </button>
@@ -1684,13 +1853,8 @@ export default function SurahReader() {
             </div>
 
             {/* Total Duration */}
-            <div className="text-[12px] font-bold text-muted-foreground w-[60px] text-right">
-              {audioProgress.duration > 0 ? (
-                <>
-                  {Math.floor(audioProgress.duration / 60).toString().padStart(2, '0')}:
-                  {Math.floor(audioProgress.duration % 60).toString().padStart(2, '0')}
-                </>
-              ) : "00:00"}
+            <div ref={durationTextRef} className="text-[12px] font-bold text-muted-foreground w-[60px] text-right">
+              00:00
             </div>
           </div>
         </div>

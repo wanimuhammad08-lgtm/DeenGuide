@@ -14,7 +14,14 @@ export function AIProvider({ children }) {
     setHistory((h) => [...h, { q: trimmed }]);
     setLoading(true);
     try {
-      const data = await ai.ask({ question: trimmed });
+      // Build conversation history from prior turns (last 6)
+      const priorTurns = [];
+      history.slice(-6).forEach(entry => {
+        if (entry.q) priorTurns.push({ role: "user", content: entry.q });
+        if (entry.a?.detailed_answer) priorTurns.push({ role: "assistant", content: entry.a.detailed_answer });
+      });
+
+      const data = await ai.ask({ question: trimmed, conversation_history: priorTurns });
       setHistory((h) => {
         const copy = [...h];
         if (copy.length > 0) {
@@ -35,7 +42,7 @@ export function AIProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, [loading, history]);
 
   const clearHistory = () => setHistory([]);
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, User, LogOut, LogIn, Trash, Shield } from "lucide-react";
+import { ArrowLeft, User, LogOut, LogIn, Trash, Shield, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { syncBookmarks } from "../lib/syncBookmarks";
 import { useBookmarks } from "../lib/bookmarks";
 import { supabase } from "../lib/supabase";
@@ -16,6 +16,7 @@ export default function UserProfile() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Check if user is admin
   useEffect(() => {
@@ -186,13 +187,22 @@ export default function UserProfile() {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"

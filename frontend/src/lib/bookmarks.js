@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { deleteRemoteBookmark, upsertRemoteBookmark } from "./syncBookmarks";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 
 const KEY = "deenguide:bookmarks:v1";

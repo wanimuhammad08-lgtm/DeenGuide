@@ -21,6 +21,33 @@ const collectionLabels = {
   ahmad: "Musnad Ahmad",
 };
 
+// Normalize AI-returned collection names to API slugs
+const collectionToSlug = {
+  "sahih al-bukhari": "bukhari",
+  "bukhari": "bukhari",
+  "sahih muslim": "muslim",
+  "muslim": "muslim",
+  "sunan abu dawood": "abudawud",
+  "sunan abu dawud": "abudawud",
+  "abudawud": "abudawud",
+  "abudawood": "abudawud",
+  "jami` at-tirmidhi": "tirmidhi",
+  "jami at-tirmidhi": "tirmidhi",
+  "tirmidhi": "tirmidhi",
+  "sunan an-nasa'i": "nasai",
+  "sunan nasai": "nasai",
+  "nasai": "nasai",
+  "sunan ibn majah": "ibnmajah",
+  "ibn majah": "ibnmajah",
+  "ibnmajah": "ibnmajah",
+  "muwatta imam malik": "malik",
+  "muwatta malik": "malik",
+  "malik": "malik",
+  "muwatta": "malik",
+};
+
+const normalizeCollection = (c) => collectionToSlug[(c || "").toLowerCase()] || c;
+
 const sampleQuestions = [
   "How do I pray Tahajjud step by step?",
   "What does Islam say about kindness to parents?",
@@ -39,6 +66,7 @@ export default function Ask() {
   const tts = useTTS();
 
   useEffect(() => {
+    if (history.length === 0 && !loading) return;
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, loading]);
 
@@ -252,18 +280,9 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
                       <span className="text-xs text-muted-foreground">#{h.number}</span>
                       {h.narrator && <span className="text-xs text-muted-foreground">· {h.narrator}</span>}
                       <AuthenticityBadge level={h.authenticity} />
-                      {tts?.supported && (h.arabic || h.english) && (
-                        <button
-                          onClick={() => { if (speaking) tts.stop(); else tts.speak(h.arabic || h.english, { lang: h.arabic ? "ar-SA" : "en-US", id: hid }); }}
-                          className={`ml-1 grid h-6 w-6 place-items-center rounded-full border border-border bg-background hover:bg-accent ${speaking ? "text-primary border-primary" : ""}`}
-                          title={speaking ? "Stop" : "Listen"}
-                        >
-                          {speaking ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-                        </button>
-                      )}
                     </div>
                     <Link
-                      to={`/hadith?book=${h.collection}&number=${h.number}`}
+                      to={`/hadith?book=${normalizeCollection(h.collection)}&number=${h.number}`}
                       className="text-[11px] font-semibold text-primary hover:underline"
                     >
                       Read in App ↗

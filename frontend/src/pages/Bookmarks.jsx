@@ -23,24 +23,6 @@ export default function Bookmarks() {
   const hasAny = ["ayahs", "hadiths", "duas", "answers"].some((k) => (data[k] || []).length > 0);
   const user = getUser();
 
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-lg py-16 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary/10">
-          <Bookmark className="h-10 w-10 text-primary" />
-        </div>
-        <h1 className="mt-6 font-heading text-2xl font-bold">Sign in to view Bookmarks</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Create an account or sign in to save and access your bookmarks.</p>
-        <Link
-          to="/more/profile"
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow transition hover:bg-primary/90"
-        >
-          Sign In / Register
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-start justify-between">
@@ -67,6 +49,16 @@ export default function Bookmarks() {
           </button>
         )}
       </div>
+
+      {!user && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          <Bookmark className="h-4 w-4 shrink-0 text-primary" />
+          <span>
+            <Link to="/more/profile" className="font-semibold text-primary hover:underline">Sign in</Link>
+            {" "}to sync bookmarks across devices.
+          </span>
+        </div>
+      )}
 
       <div className="mb-6 flex gap-2 overflow-x-auto scroll-thin">
         {tabs.map((t) => (

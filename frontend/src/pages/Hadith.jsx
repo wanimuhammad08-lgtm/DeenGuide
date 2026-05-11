@@ -134,7 +134,7 @@ export default function Hadith() {
   };
 
   const totalHadiths = books.reduce((acc, b) => acc + (b.count || 0), 0);
-  const displayCount = totalHadiths > 0 ? `${totalHadiths.toLocaleString()}+` : "41,000+";
+  const displayCount = totalHadiths > 0 ? `${totalHadiths.toLocaleString()}+` : "36,390+";
 
   // ───────────────────────── GRID landing ─────────────────────────
   if (view.kind === "grid") {

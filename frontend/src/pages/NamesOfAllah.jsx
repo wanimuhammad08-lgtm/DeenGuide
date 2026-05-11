@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Search, X, BookOpen, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import NAMES_DETAILS from "./namesData";
+import NAMES_DETAILS from "@/lib/namesData";
 
 export default function NamesOfAllah() {
   const [search, setSearch] = useState("");

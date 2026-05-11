@@ -1,10 +1,9 @@
-import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Layout } from "@/components/Layout";
 import { AIProvider } from "@/context/AIContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 import Home from "@/pages/Home";
 import Ask from "@/pages/Ask";
 import Quran from "@/pages/Quran";

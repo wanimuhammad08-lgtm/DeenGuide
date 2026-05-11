@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Copy, Share2, Play, Pause, Check, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Share2, Play, Pause, Check, ShieldCheck, ChevronDown, ChevronUp, Bookmark, BookmarkCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useBookmarks } from "@/lib/bookmarks";
 
 /* ── Grade badge ── */
 const GradeBadge = ({ grade }) => {
@@ -49,6 +50,8 @@ export const DuaCard = ({ dua, topicTitle }) => {
   const [copied, setCopied] = useState(false);
   const audioRef = useRef(null);
   const instanceId = useRef(Math.random().toString()).current;
+  const { toggle, isBookmarked } = useBookmarks();
+  const saved = isBookmarked("duas", dua.id);
 
   /* ── Audio Manager ── */
   useEffect(() => {
@@ -217,6 +220,16 @@ export const DuaCard = ({ dua, topicTitle }) => {
         </ActionBtn>
         <ActionBtn onClick={handleShare} title="Share">
           <Share2 size={15} />
+        </ActionBtn>
+        <ActionBtn
+          onClick={() => {
+            toggle("duas", { id: dua.id, title: topicTitle, arabic: dua.arabic, translation: dua.translation, reference: dua.reference });
+            toast.success(saved ? "Removed from bookmarks" : "Dua saved!");
+          }}
+          active={saved}
+          title={saved ? "Remove bookmark" : "Bookmark"}
+        >
+          {saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
         </ActionBtn>
         {dua.audio && (
           <ActionBtn onClick={togglePlay} active={isPlaying} title="Play audio">
