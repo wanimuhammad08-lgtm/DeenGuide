@@ -516,7 +516,9 @@ export default function Home() {
           </div>
         </div>
         <div className="text-right">
-          <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500 }}>{hijriStr}</div>
+          <Link to="/more/calendar" style={{ textDecoration: "none", display: "block" }} className="hover:opacity-70 transition-opacity">
+            <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500 }}>{hijriStr}</div>
+          </Link>
           <button
             onClick={() => { setIsLocModalOpen(true); setLocQuery(""); setLocResults([]); }}
             style={{ display:"flex", alignItems:"center", gap:4, color:"#1B4D3E", fontSize:12, fontWeight:600, marginTop:2, background:"none", border:"none", cursor:"pointer", padding:0 }}
