@@ -445,8 +445,15 @@ export default function Home() {
   // Countdown to next prayer
   useEffect(() => {
     if (!times || !next) return;
-    const nextMs = times[next]?.ms;
+    let nextMs = times[next]?.ms;
     if (!nextMs) return;
+    
+    // If the next prayer's MS from current day's calculation falls behind NOW,
+    // it must wrap into the next continuous temporal day (e.g. Qiyam past midnight).
+    if (nextMs < Date.now()) {
+      nextMs += 24 * 3600000;
+    }
+    
     const diff = nextMs - Date.now();
     setCountdown(fmtCountdown(diff > 0 ? diff : 0));
   }, [now, times, next]);
@@ -463,8 +470,19 @@ export default function Home() {
   // Progress bar between current and next prayer
   const progress = useMemo(() => {
     if (!currentPrayer?.ms || !nextPrayer?.ms) return 0;
-    const total = nextPrayer.ms - currentPrayer.ms;
-    const elapsed = now - currentPrayer.ms;
+    
+    let cMs = currentPrayer.ms;
+    let nMs = nextPrayer.ms;
+
+    // Corrective temporal offsets:
+    // 1. If current time dictates current prayer calculation is in future relative to clock, shift cMs to yesterday.
+    if (cMs > now) cMs -= 24 * 3600000;
+    // 2. If nextMs calculation is less than cMs, shift nMs to tomorrow.
+    if (nMs < cMs) nMs += 24 * 3600000;
+
+    const total = nMs - cMs;
+    const elapsed = now - cMs;
+    
     return Math.min(100, Math.max(0, (elapsed / total) * 100));
   }, [now, currentPrayer, nextPrayer]);
 
