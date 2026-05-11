@@ -48,6 +48,20 @@ export const DuaCard = ({ dua, topicTitle }) => {
   const [audioErr, setAudioErr] = useState(false);
   const [copied, setCopied] = useState(false);
   const audioRef = useRef(null);
+  const instanceId = useRef(Math.random().toString()).current;
+
+  /* ── Audio Manager ── */
+  useEffect(() => {
+    const handleGlobalStop = (e) => {
+      // Pause and reset state if the event was fired by a different instance
+      if (e.detail !== instanceId && audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener("stop-all-dua-audio", handleGlobalStop);
+    return () => window.removeEventListener("stop-all-dua-audio", handleGlobalStop);
+  }, [instanceId]);
 
   /* ── Audio ── */
   useEffect(() => {
@@ -62,8 +76,17 @@ export const DuaCard = ({ dua, topicTitle }) => {
   const togglePlay = () => {
     const a = audioRef.current;
     if (!a || audioErr) { toast.error("Audio unavailable"); return; }
-    if (isPlaying) { a.pause(); setIsPlaying(false); }
-    else { a.play().catch(() => { setAudioErr(true); setIsPlaying(false); }); setIsPlaying(true); }
+    
+    if (isPlaying) { 
+      a.pause(); 
+      setIsPlaying(false); 
+    } else { 
+      // Tell all other components to stop their audio
+      window.dispatchEvent(new CustomEvent("stop-all-dua-audio", { detail: instanceId }));
+      
+      a.play().catch(() => { setAudioErr(true); setIsPlaying(false); }); 
+      setIsPlaying(true); 
+    }
   };
 
   /* ── Copy / Share ── */
