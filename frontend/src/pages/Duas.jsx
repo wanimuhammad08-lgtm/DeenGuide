@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, ChevronDown, ChevronUp, Loader2, X } from "lucide-react";
 import * as Icons from "lucide-react";
 import { duas as duasApi } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 
 const SECTION_ORDER = ["Daily", "Azkar", "Worship", "Other Occasions"];
 
@@ -57,6 +58,9 @@ export default function Duas() {
   const handleToggle = async (catId) => {
     if (expanded === catId) { setExpanded(null); return; }
     setExpanded(catId);
+    // Track dua category open
+    const cat = allCats.find(c => c.id === catId);
+    trackEvent('dua_opened', 'duas', { category: cat?.title || catId });
     if (!topicLists[catId]) {
       const data = await duasApi.category(catId);
       setTopicLists((prev) => ({ ...prev, [catId]: data.topics || [] }));

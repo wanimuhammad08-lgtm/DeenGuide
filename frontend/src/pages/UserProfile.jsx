@@ -1,56 +1,95 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, User, LogOut, LogIn } from "lucide-react";
+import { ArrowLeft, User, LogOut, LogIn, Trash, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-
-function getUser() {
-  try {
-    return JSON.parse(localStorage.getItem("deenguide_user"));
-  } catch { return null; }
-}
+import { useAuth } from "../contexts/AuthContext";
+import { syncBookmarks } from "../lib/syncBookmarks";
+import { useBookmarks } from "../lib/bookmarks";
+import { supabase } from "../lib/supabase";
 
 export default function UserProfile() {
-  const [user, setUser] = useState(getUser);
+  const { user, signIn, signUp, signOut, loading } = useAuth();
+  const { clearAll } = useBookmarks();
+  
   const [mode, setMode] = useState("login"); // "login" | "register"
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const handleLogin = (e) => {
+  // Check if user is admin
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('role').eq('id', user.id).single().then(({ data }) => {
+        if (data?.role === 'admin') setIsAdmin(true);
+      });
+    }
+  }, [user]);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) { toast.error("Please fill in all fields"); return; }
-    // Simple localStorage auth (demo)
-    const stored = JSON.parse(localStorage.getItem("deenguide_users") || "{}");
-    const found = stored[email];
-    if (!found || found.password !== password) {
-      toast.error("Invalid email or password");
+    
+    setIsSubmitting(true);
+    const { data, error } = await signIn(email, password);
+    setIsSubmitting(false);
+    
+    if (error) {
+      if (error.status === 429 || error.message.includes("body stream already read")) {
+        toast.error("Too many login attempts. Please wait a minute and try again.");
+      } else {
+        toast.error(error.message || "Sign in failed. Please check your credentials.");
+      }
       return;
     }
-    const u = { name: found.name, email };
-    localStorage.setItem("deenguide_user", JSON.stringify(u));
-    setUser(u);
-    toast.success(`Welcome back, ${found.name}!`);
+    
+    toast.success("Welcome back!");
+    if (data?.user?.id) {
+        syncBookmarks(data.user.id);
+    }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (!name || !email || !password) { toast.error("Please fill in all fields"); return; }
+    if (!email || !password) { toast.error("Please fill in all fields"); return; }
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-    const stored = JSON.parse(localStorage.getItem("deenguide_users") || "{}");
-    if (stored[email]) { toast.error("Account already exists. Please login."); return; }
-    stored[email] = { name, password };
-    localStorage.setItem("deenguide_users", JSON.stringify(stored));
-    const u = { name, email };
-    localStorage.setItem("deenguide_user", JSON.stringify(u));
-    setUser(u);
-    toast.success(`Account created! Welcome, ${name}`);
+    
+    setIsSubmitting(true);
+    const { data, error } = await signUp(email, password);
+    setIsSubmitting(false);
+
+    if (error) {
+      // Handle Supabase's internal double-read error on 429s
+      if (error.status === 429 || error.message.includes("body stream already read")) {
+        toast.error("Too many registration attempts. Please wait a minute and try again.");
+      } else if (error.message.includes("User already registered")) {
+        toast.error("An account with this email already exists. Please sign in.");
+      } else {
+        toast.error(error.message || "Registration failed. Please try again.");
+      }
+      return;
+    }
+    toast.success("Account created successfully!");
+    if (data?.user?.id) {
+        syncBookmarks(data.user.id);
+    }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("deenguide_user");
-    setUser(null);
-    toast.success("Logged out successfully");
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Logged out successfully. Local bookmarks preserved.");
   };
+
+  const handleClearLocalData = () => {
+    if (window.confirm("Are you sure you want to clear all offline bookmarks? This cannot be undone.")) {
+      clearAll();
+      toast.success("Local data cleared.");
+    }
+  };
+
+  if (loading) {
+     return <div className="p-8 text-center">Loading...</div>;
+  }
 
   if (user) {
     return (
@@ -64,17 +103,35 @@ export default function UserProfile() {
 
         <div className="rounded-3xl border border-border bg-card p-8 text-center">
           <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg">
-            <span className="font-heading text-3xl font-bold">{user.name.charAt(0).toUpperCase()}</span>
+            <span className="font-heading text-3xl font-bold">{user.email.charAt(0).toUpperCase()}</span>
           </div>
-          <h2 className="mt-4 font-heading text-xl font-bold">{user.name}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{user.email}</p>
 
-          <button
-            onClick={handleLogout}
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-destructive/30 bg-destructive/5 px-6 py-2.5 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
-          >
-            <LogOut className="h-4 w-4" /> Sign Out
-          </button>
+          <div className="mt-8 flex flex-col gap-3">
+             <button
+               onClick={handleLogout}
+               className="inline-flex w-full justify-center items-center gap-2 rounded-xl border border-border bg-background px-6 py-3 text-sm font-semibold transition hover:bg-accent"
+             >
+               <LogOut className="h-4 w-4" /> Sign Out
+             </button>
+
+             {isAdmin && (
+               <Link
+                 to="/admin"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="inline-flex w-full justify-center items-center gap-2 rounded-xl border border-primary bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow transition hover:bg-primary/90"
+               >
+                 <Shield className="h-4 w-4" /> Go to Admin Dashboard
+               </Link>
+             )}
+             <button
+               onClick={handleClearLocalData}
+               className="inline-flex w-full justify-center items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-3 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
+             >
+               <Trash className="h-4 w-4" /> Clear Local Data
+             </button>
+          </div>
         </div>
       </div>
     );
@@ -116,18 +173,7 @@ export default function UserProfile() {
         </div>
 
         <form onSubmit={mode === "login" ? handleLogin : handleRegister} className="space-y-4">
-          {mode === "register" && (
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Muhammad"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          )}
+          {/* Removed Name field for simpler auth */}
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
             <input
@@ -150,10 +196,11 @@ export default function UserProfile() {
           </div>
           <button
             type="submit"
-            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow transition hover:bg-primary/90 active:scale-[0.98]"
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow transition hover:bg-primary/90 active:scale-[0.98] disabled:opacity-70"
           >
             <LogIn className="mr-2 inline h-4 w-4" />
-            {mode === "login" ? "Sign In" : "Create Account"}
+            {isSubmitting ? "Please wait..." : (mode === "login" ? "Sign In" : "Create Account")}
           </button>
         </form>
       </div>

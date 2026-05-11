@@ -83,7 +83,7 @@ class DuaService:
                         "transliteration": d.get("LANGUAGE_ARABIC_TRANSLATED_TEXT", ""),
                         "translation": d.get("TRANSLATED_TEXT", ""),
                         "repeat": d.get("REPEAT", 1),
-                        "audio": d.get("AUDIO", ""),
+                        "audio": d.get("AUDIO", "").replace("http://", "https://"),
                         "reference": ref,
                         "grade": grade,
                         "benefits": [],

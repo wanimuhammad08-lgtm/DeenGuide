@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 
 const RECITER_KEY = "deenguide:v4-reciter";
 const TRANSLATION_KEY = "deenguide:v4-translation";
@@ -315,6 +316,8 @@ export default function SurahReader() {
           }))
         };
         setData(adapted);
+        // Track surah open
+        trackEvent('quran_surah_opened', 'quran', { surah: adapted.number, surah_name: adapted.englishName });
         // Save Last Seen
         try {
           localStorage.setItem("deenguide:last-seen-surah", JSON.stringify({
@@ -460,6 +463,8 @@ export default function SurahReader() {
     currentIdxRef.current = idx;
     setPlaying(true);
     setIsAudioPlayerVisible(true);
+    // Track audio play
+    if (idx === 0) trackEvent('audio_played', 'quran', { surah: data?.number, surah_name: data?.englishName });
     if (autoScrollRef.current) {
       const el = document.querySelector(`[data-ayah-row="${ayah.number}"]`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });

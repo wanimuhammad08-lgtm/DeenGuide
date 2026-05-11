@@ -1,4 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
+import { deleteRemoteBookmark, upsertRemoteBookmark } from "./syncBookmarks";
+import { useAuth } from "../contexts/AuthContext";
+
 
 const KEY = "deenguide:bookmarks:v1";
 
@@ -25,6 +28,8 @@ const write = (data) => {
 
 export const useBookmarks = () => {
   const [data, setData] = useState(read);
+  const { user } = useAuth();
+
 
   useEffect(() => {
     const sync = () => setData(read());
@@ -39,25 +44,41 @@ export const useBookmarks = () => {
   const toggle = useCallback((kind, item, idKey = "id") => {
     const current = read();
     const list = current[kind] || [];
-    const exists = list.find((x) => x[idKey] === item[idKey]);
+    const exists = list.find((x) => String(x[idKey]) === String(item[idKey]));
     const next = {
       ...current,
-      [kind]: exists ? list.filter((x) => x[idKey] !== item[idKey]) : [...list, item],
+      [kind]: exists ? list.filter((x) => String(x[idKey]) !== String(item[idKey])) : [...list, item],
     };
     write(next);
-  }, []);
+
+    // Optimistic background sync
+    if (user) {
+      if (exists) {
+        deleteRemoteBookmark(user.id, kind, item[idKey]);
+      } else {
+        upsertRemoteBookmark(user.id, kind, item[idKey], item);
+      }
+    }
+  }, [user]);
+
 
   const isBookmarked = useCallback(
     (kind, id, idKey = "id") => {
-      return (data[kind] || []).some((x) => x[idKey] === id);
+      return (data[kind] || []).some((x) => String(x[idKey]) === String(id));
     },
     [data]
   );
 
+
   const remove = useCallback((kind, id, idKey = "id") => {
     const current = read();
-    write({ ...current, [kind]: (current[kind] || []).filter((x) => x[idKey] !== id) });
-  }, []);
+    write({ ...current, [kind]: (current[kind] || []).filter((x) => String(x[idKey]) !== String(id)) });
+    
+    if (user) {
+      deleteRemoteBookmark(user.id, kind, id);
+    }
+  }, [user]);
+
 
   const clearAll = useCallback(() => {
     write({ ayahs: [], hadiths: [], duas: [], answers: [] });

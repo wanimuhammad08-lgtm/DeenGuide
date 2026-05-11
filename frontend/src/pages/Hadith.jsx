@@ -6,6 +6,7 @@ import { AuthenticityBadge } from "@/components/AuthenticityBadge";
 import { useBookmarks } from "@/lib/bookmarks";
 import { useTTS } from "@/lib/tts";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 
 export default function Hadith() {
   const [view, setView] = useState({ kind: "grid" }); // 'grid' | 'chapters' | 'chapter' | 'global-search'
@@ -78,6 +79,8 @@ export default function Hadith() {
   useEffect(() => {
     if (view.kind !== "chapters") return;
     setChaptersData({ chapters: [], loading: true });
+    // Track collection open
+    trackEvent('hadith_opened', 'hadith', { collection: view.book });
     hadith
       .chapters(view.book)
       .then((d) => setChaptersData({ chapters: d.chapters || [], loading: false }))
@@ -111,7 +114,14 @@ export default function Hadith() {
     setGlobalLoading(true);
     hadith
       .searchV2({ q, page: globalPage, per_page: 20 })
-      .then(setGlobalData)
+      .then((d) => {
+        setGlobalData(d);
+        if (d.total === 0) {
+          trackEvent('search_failed', 'hadith', { query: q });
+        } else {
+          trackEvent('search_performed', 'hadith', { query: q, results: d.total });
+        }
+      })
       .catch(() => toast.error("Failed to load hadiths"))
       .finally(() => setGlobalLoading(false));
   }, [view.kind, globalQuery, globalPage]);

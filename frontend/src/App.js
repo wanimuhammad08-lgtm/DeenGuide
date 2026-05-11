@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Layout } from "@/components/Layout";
 import { AIProvider } from "@/context/AIContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Home from "@/pages/Home";
 import Ask from "@/pages/Ask";
 import Quran from "@/pages/Quran";
@@ -27,6 +28,7 @@ import ZakatCalculator from "@/pages/ZakatCalculator";
 import AppSettings from "@/pages/AppSettings";
 import Help from "@/pages/Help";
 import UserProfile from "@/pages/UserProfile";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -39,9 +41,10 @@ function ScrollToTop() {
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <AIProvider>
-          <ScrollToTop />
+      <AuthProvider>
+        <BrowserRouter>
+          <AIProvider>
+            <ScrollToTop />
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />
@@ -66,12 +69,14 @@ function App() {
               <Route path="/more/settings" element={<AppSettings />} />
               <Route path="/more/help" element={<Help />} />
               <Route path="/more/profile" element={<UserProfile />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Route>
             {/* Tasbih is fullscreen, no layout */}
             <Route path="/more/tasbih" element={<TasbihCounter />} />
           </Routes>
         </AIProvider>
       </BrowserRouter>
+      </AuthProvider>
       <Toaster richColors position="top-center" />
     </div>
   );
