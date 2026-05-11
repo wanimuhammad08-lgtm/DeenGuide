@@ -295,7 +295,7 @@ export default function SurahReader() {
             indopak: v.text_indopak,
             translations: v.translations?.map(t => ({ id: t.resource_id, text: t.text?.replace(/<[^>]+>/g, '') })) || [], // Multi-translation array
             audio: v.audio?.url ? (
-              v.audio.url.startsWith('http') ? v.audio.url :
+              v.audio.url.startsWith('http') ? v.audio.url.replace('http://', 'https://') :
               v.audio.url.startsWith('//') ? `https:${v.audio.url}` :
               `https://verses.quran.com/${v.audio.url}`
             ) : null,
@@ -307,7 +307,7 @@ export default function SurahReader() {
               translation: w.translation?.text,
               transliteration: w.transliteration?.text,
               audio: w.audio_url ? (
-                w.audio_url.startsWith('http') ? w.audio_url :
+                w.audio_url.startsWith('http') ? w.audio_url.replace('http://', 'https://') :
                 w.audio_url.startsWith('//') ? `https:${w.audio_url}` :
                 `https://audio.qurancdn.com/${w.audio_url}`
               ) : null,
@@ -396,28 +396,49 @@ export default function SurahReader() {
       w.speak(u);
     }), [tts.supported]);
 
-  const playAudioAsync = useCallback((url) =>
+  const playAudioAsync = useCallback((url, retries = 2) =>
     new Promise((resolve) => {
       if (!url) return resolve(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      const a = new Audio(url);
-      a.playbackRate = parseFloat(localStorage.getItem('deenguide:speed') || '1');
-      a.volume = parseFloat(localStorage.getItem('deenguide:volume') || '1');
-      a.onended = () => resolve(true);
-      a.onerror = () => resolve(false);
+      const safeUrl = url.replace(/^http:/i, 'https:');
       
-      a.addEventListener("timeupdate", () => {
-        setAudioProgress({ currentTime: a.currentTime, duration: a.duration });
-      });
-      a.addEventListener("loadedmetadata", () => {
-        setAudioProgress({ currentTime: 0, duration: a.duration });
-      });
+      const tryPlay = (attemptLeft) => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+        
+        const a = new Audio(safeUrl);
+        a.playbackRate = parseFloat(localStorage.getItem('deenguide:speed') || '1');
+        a.volume = parseFloat(localStorage.getItem('deenguide:volume') || '1');
+        
+        a.onended = () => resolve(true);
+        a.onerror = () => {
+          if (attemptLeft > 0) {
+            console.log(`Retrying audio playback... ${attemptLeft} attempts left.`);
+            setTimeout(() => tryPlay(attemptLeft - 1), 500);
+          } else {
+            resolve(false);
+          }
+        };
+        
+        a.addEventListener("timeupdate", () => {
+          setAudioProgress({ currentTime: a.currentTime, duration: a.duration });
+        });
+        a.addEventListener("loadedmetadata", () => {
+          setAudioProgress({ currentTime: 0, duration: a.duration });
+        });
 
-      a.play().catch(() => resolve(false));
-      audioRef.current = a;
+        a.play().catch((e) => {
+          if (attemptLeft > 0) {
+            setTimeout(() => tryPlay(attemptLeft - 1), 500);
+          } else {
+            resolve(false);
+          }
+        });
+        audioRef.current = a;
+      };
+
+      tryPlay(retries);
     }), []);
 
   const translationAudioUrl = useCallback((surahNum, ayahNum) => {
