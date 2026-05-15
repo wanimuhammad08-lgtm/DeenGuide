@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowLeft, RotateCcw, Check, ChevronDown, Palette } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 // Authentic Tasbih from Quran & Sunnah only
 const PRESETS = [
@@ -212,6 +212,7 @@ function NightScene({ bg }) {
 }
 
 export default function TasbihCounter() {
+  const navigate = useNavigate();
   const [preset, setPreset] = useState(() => {
     const saved = localStorage.getItem("dg_tasbih_preset");
     return saved ? parseInt(saved, 10) : 0;
@@ -346,9 +347,12 @@ export default function TasbihCounter() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-4 py-4">
-        <Link to="/more" className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white backdrop-blur">
+        <button
+          onClick={() => navigate(-1)}
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+        >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <h1 className="font-heading text-lg font-semibold text-white">Tasbih</h1>
         {/* Background picker button */}
         <button

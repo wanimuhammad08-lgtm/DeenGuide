@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, RotateCcw, Smartphone, MapPin, Navigation2, AlertCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const KAABAH = { lat: 21.4225, lng: 39.8262 };
@@ -136,6 +136,7 @@ function QiblaCompass({ qiblaBearing, deviceHeading }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function QiblaDirection() {
+  const navigate = useNavigate();
   const [location, setLocation] = useState(() => {
     try { return JSON.parse(localStorage.getItem("dg_location") || "null"); } catch { return null; }
   });
@@ -274,12 +275,12 @@ export default function QiblaDirection() {
     <div className="mx-auto max-w-lg pb-24">
       {/* Header */}
       <div className="mb-8 flex items-center gap-4">
-        <Link
-          to="/more"
+        <button
+          onClick={() => navigate(-1)}
           className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card shadow-sm hover:bg-accent/30 transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Direction</p>
           <h1 className="font-heading text-2xl font-bold tracking-tight">Qibla Finder</h1>

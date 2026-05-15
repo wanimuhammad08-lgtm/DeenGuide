@@ -8,7 +8,7 @@ import {
   Scale,
   Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const GOLD_NISAB_GRAMS = 87.48;
@@ -150,6 +150,7 @@ function SummaryRow({ label, value, highlight, negative }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function ZakatCalculator() {
+  const navigate = useNavigate();
   const [values, setValues] = useState({});
   const [currency, setCurrency] = useState("INR");
   const [nisabType, setNisabType] = useState("silver"); // silver default
@@ -201,12 +202,12 @@ export default function ZakatCalculator() {
     <div className="mx-auto max-w-lg pb-8">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
-        <Link
-          to="/more"
+        <button
+          onClick={() => navigate(-1)}
           className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card transition-colors hover:bg-muted"
         >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Financial

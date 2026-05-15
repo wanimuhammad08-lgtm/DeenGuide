@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import {
   Calendar, Star, Heart, MapPin, Plane,
   ArrowLeftRight, Calculator, Settings, HelpCircle, User, Bookmark,
-  ChevronRight,
+  ChevronRight, Compass,
 } from "lucide-react";
 
 const sections = [
@@ -10,7 +10,7 @@ const sections = [
     title: "Spiritual Tools",
     items: [
       { to: "/more/calendar", label: "Islamic Calendar", desc: "Hijri dates & events", icon: Calendar, color: "bg-red-500" },
-      { to: "/more/names-of-allah", label: "99 Names of Allah", desc: "Al-Asma ul-Husna", icon: Star, color: "bg-amber-500" },
+      { to: "/more/qibla", label: "Qibla Finder", desc: "Locate the Ka'bah", icon: Compass, color: "bg-violet-500" },
       { to: "/more/date-converter", label: "Date Converter", desc: "Hijri ↔ Gregorian", icon: ArrowLeftRight, color: "bg-cyan-500" },
       { to: "/more/zakat", label: "Zakat Calculator", desc: "Calculate your Zakat", icon: Calculator, color: "bg-green-600" },
     ],

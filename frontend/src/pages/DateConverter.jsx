@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowLeftRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { gregorianToHijri, hijriToGregorian, HIJRI_MONTHS } from "@/lib/hijriDate";
 
 // Hijri conversion imported from @/lib/hijriDate
@@ -8,6 +8,7 @@ const GREG_MONTHS = ["January","February","March","April","May","June","July","A
 const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 export default function DateConverter() {
+  const navigate = useNavigate();
   const today = new Date();
   const [mode, setMode] = useState("g2h"); // "g2h" or "h2g"
   const [gDay, setGDay] = useState(today.getDate());
@@ -32,9 +33,12 @@ export default function DateConverter() {
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-8 flex items-center gap-4">
-        <Link to="/more" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card">
+        <button
+          onClick={() => navigate(-1)}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card hover:bg-accent transition-colors"
+        >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Converter</p>
           <h1 className="font-heading text-2xl font-bold tracking-tight">Date Converter</h1>

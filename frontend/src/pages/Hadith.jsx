@@ -195,7 +195,7 @@ export default function Hadith() {
                     className="w-full p-4 hover:bg-accent/40 transition-colors text-left block"
                   >
                     <div className="flex items-center gap-2 mb-1 text-[11px] font-bold text-primary uppercase tracking-wider">
-                      {res.collection_name} #{res.number}
+                      {res.collection_name} #{res.standard_number || res.number}
                     </div>
                     <p className="text-[13px] text-foreground/90 line-clamp-2 leading-relaxed">
                       {res.english}
@@ -356,10 +356,17 @@ export default function Hadith() {
     return (
       <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
         <button
-          onClick={() => setView({ kind: "grid" })}
+          onClick={() => {
+            const params = new URLSearchParams(location.search);
+            if (params.has("book") || params.has("number") || params.has("q")) {
+              navigate(-1);
+            } else {
+              setView({ kind: "grid" });
+            }
+          }}
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Collections
+          <ArrowLeft className="h-4 w-4" /> Back
         </button>
         
         {view.loading ? (
@@ -440,7 +447,7 @@ const HadithCard = ({ h, toggle, isBookmarked }) => {
     <article data-testid={`hadith-${h.id}`} className="rounded-2xl border border-border bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-2 text-xs mb-4">
         <span className="font-semibold text-foreground">{h.collection_name}</span>
-        <span className="text-muted-foreground">#{h.number}</span>
+        <span className="text-muted-foreground">#{h.standard_number || h.number}</span>
         {h.authenticity && <AuthenticityBadge level={h.authenticity} />}
         {h.grade_text && h.grade_text.toLowerCase() !== (h.authenticity || "").toLowerCase() && (
           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground" title="Grade">

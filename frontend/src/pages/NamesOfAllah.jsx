@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { ArrowLeft, Search, X, BookOpen, ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import NAMES_DETAILS from "@/lib/namesData";
 
 export default function NamesOfAllah() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
@@ -17,9 +18,12 @@ export default function NamesOfAllah() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex items-center gap-4">
-        <Link to="/more" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card">
+        <button
+          onClick={() => navigate(-1)}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card hover:bg-accent transition-colors"
+        >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Al-Asma ul-Husna</p>
           <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">99 Names of Allah</h1>

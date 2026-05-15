@@ -22,9 +22,7 @@ const desktopNavItems = [
 
 const Brand = () => (
   <Link to="/" data-testid="brand-link" className="flex items-center gap-2.5 font-heading">
-    <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-      <span className="font-arabic text-lg leading-none">د</span>
-    </span>
+    <img src="/favicon.png" alt="DeenGuide Logo" className="h-9 w-9 object-contain" />
     <span className="text-lg font-bold tracking-tight">DeenGuide</span>
   </Link>
 );

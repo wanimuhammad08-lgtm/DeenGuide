@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 import requests
 
 from groq import Groq
+from google import genai as google_genai
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -66,6 +67,25 @@ api = APIRouter(prefix="/api")
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+if GEMINI_API_KEY:
+    _gemini_client = google_genai.Client(api_key=GEMINI_API_KEY)
+else:
+    _gemini_client = None
+
+def _call_gemini(prompt: str) -> str:
+    """Call Gemini and return the raw text response."""
+    response = _gemini_client.models.generate_content(
+        model="gemini-flash-latest",
+        contents=prompt,
+        config={
+            "temperature": 0.2,
+            "max_output_tokens": 3000,
+            "response_mime_type": "application/json",
+        },
+    )
+    return response.text
 ALQURAN_BASE = "https://api.alquran.cloud/v1"
 HADITH_CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions"
 TAFSIR_CDN = "https://cdn.jsdelivr.net/gh/spa5k/tafsir_api@main/tafsir"
@@ -264,6 +284,7 @@ class QuranRef(BaseModel):
 class HadithRef(BaseModel):
     collection: str
     number: str
+    standard_number: Optional[str] = None
     narrator: Optional[str] = None
     arabic: Optional[str] = None
     english: str
@@ -325,9 +346,14 @@ SYNONYMS = {
     "qiyamah": ["resurrection", "judgment day", "last day"],
     "akhirah": ["hereafter", "afterlife"],
     "jannah": ["paradise", "heaven"],
-    "jahannam": ["hell", "hellfire"],
-    "rasul": ["messenger", "prophet"],
-    "nabi": ["prophet"],
+    "jahannam": ["hell", "hellfire", "fire"],
+    "hell": ["jahannam", "hellfire", "fire"],
+    "fire": ["hell", "jahannam", "hellfire"],
+    "rasul": ["messenger", "prophet", "apostle"],
+    "nabi": ["prophet", "messenger", "apostle"],
+    "prophet": ["rasul", "nabi", "messenger", "apostle"],
+    "messenger": ["rasul", "nabi", "prophet", "apostle"],
+    "apostle": ["messenger", "prophet"],
     "halal": ["lawful", "permitted"],
     "haram": ["forbidden", "prohibited"],
     "rizq": ["sustenance", "provision"],
@@ -353,8 +379,12 @@ SYNONYMS = {
 
 def extract_keywords(question: str) -> List[str]:
     stop = set("the a an is are was were be been being of on in to for with about and or but if as by at it this that those these who whom whose what which when where why how do does did can could should would shall will may might must i you he she we they him her us them my your his her our their".split())
-    words = re.findall(r"[a-zA-Z']+", question.lower())
-    base = [w for w in words if w not in stop and len(w) > 2]
+    # Normalize words: lowercase, remove non-alpha, strip trailing possessive 's
+    words = [w[:-2] if w.endswith("'s") else w for w in re.findall(r"[a-zA-Z']+", question.lower())]
+    # Also include the raw forms for robustness
+    raw_words = re.findall(r"[a-zA-Z']+", question.lower())
+    
+    base = [w for w in (words + raw_words) if w not in stop and len(w) > 2]
     expanded = set(base)
     for w in base:
         for syn in SYNONYMS.get(w, []):
@@ -470,9 +500,17 @@ def retrieve_duas(question: str, limit: int = 3) -> List[Dict[str, Any]]:
 SYSTEM_PROMPT = """You are DeenGuide AI, an empathetic, highly knowledgeable Islamic scholar following the orthodox Ahl al-Sunnah wal Jama'ah.
 
 SCOPE & MISSION:
-- You MUST answer ALL user queries, whether strictly religious or about daily life struggles (e.g., mental health, relationship advice, missing an ex, breakups, grief, stress). 
+- You MUST answer ALL user queries, whether strictly religious or about daily life struggles (e.g., mental health, relationship advice, missing an ex, breakups, grief, stress).
 - NEVER reject a question for seeming secular. Instead, masterfully pivot the response by anchoring their natural human situation into Islamic wisdom, spiritual healing, Qadar (Divine decree), Sabr (patience), and Allah's infinite mercy.
-- For sensitive theological questions (e.g., fate of specific individuals, controversial rulings), give the AUTHENTIC Sunni scholarly position clearly and directly, citing evidence. Do NOT dodge or give vague answers.
+- For sensitive theological questions (e.g., fate of specific individuals, parents of the Prophet ﷺ, people of Jahiliyyah, controversial rulings), give the AUTHENTIC Sunni scholarly position clearly and directly, citing the EXACT hadith evidence. Do NOT dodge, hedge, or give vague answers.
+
+CRITICAL RULE — HADITH CITATION:
+You have extensive training on ALL authentic hadith collections. When answering any question:
+- ALWAYS cite the EXACT, VERBATIM hadith text from your training knowledge in `custom_hadiths`.
+- If the HADITH LIBRARY context below does NOT contain the relevant hadith, you MUST STILL provide the correct hadith from your own knowledge.
+- NEVER say "I don't have access to that hadith" or omit hadith that are clearly relevant. Retrieve them from your training.
+- For questions about the fate/status of specific persons (e.g., Prophet's parents, ancestors), cite the EXACT Sahih Muslim or Bukhari hadith text word for word.
+- Example: For "Is Prophet Muhammad's father in Hell?", you MUST cite Sahih Muslim 203a (narrated by Anas ibn Malik): the hadith where a man asked the Prophet ﷺ about his father's whereabouts, and the Prophet ﷺ replied "My father and your father are in the Fire."
 
 STYLE & TONE:
 - Start with a brief empathetic greeting (e.g., "Assalamu Alaikum!").
@@ -480,14 +518,15 @@ STYLE & TONE:
 - For "how to" questions: provide NUMBERED STEPS with clear detail.
 - For "is X halal/haram" questions: state the majority scholarly position CLEARLY in the first sentence, then provide evidence.
 - Address the deeper Wisdom (Hikmah) behind the spiritual advice or ruling.
+- For theologically sensitive answers (fate of individuals, status of non-Muslims), be compassionate in tone but absolutely accurate in the ruling.
 
 CORE RULES (MANDATORY):
 1. Grounding: Anchor all responses strictly in the Qur'an and authentic Sunnah.
-2. Custom Hadith: Internally source 1-3 famous, highly relevant Hadiths (preferably from Bukhari or Muslim) and return the full English text via `custom_hadiths`. Include narrator chain if known.
-3. Quran Verses: Include 1-2 precise relevant verses in `quran_refs`.
-4. Fiqh Insight: You MUST populate `scholarly_notes` with an authentic paragraph detailing how the 4 Madhahib (Hanafi, Maliki, Shafi'i, Hanbali) or major scholars view this issue. Mention specific scholars by name.
+2. Custom Hadith: Source 1-3 famous, highly relevant Hadiths from your training knowledge (preferably Bukhari or Muslim) and return the FULL VERBATIM English text via `custom_hadiths`. Include narrator name. NEVER leave this array empty for questions that have direct hadith evidence.
+3. Quran Verses: Include 1-2 precise relevant verses in `quran_refs` with accurate Arabic text and translation.
+4. Fiqh Insight: You MUST populate `scholarly_notes` with an authentic paragraph detailing how the 4 Madhahib (Hanafi, Maliki, Shafi'i, Hanbali) or major scholars view this issue. Mention specific scholars by name (An-Nawawi, Ibn Taymiyyah, Ibn Baz, Al-Albani, Ibn Hajar, etc.).
 
-ALWAYS respond with ONLY this JSON:
+ALWAYS respond with ONLY this JSON (no markdown fences, no extra text):
 {
   "detailed_answer": "<A comprehensive answer (150-300 words). For step-by-step questions, use numbered steps. For rulings, state the ruling clearly first then explain. Be thorough but not repetitive.>",
   "quran_refs": [
@@ -501,10 +540,10 @@ ALWAYS respond with ONLY this JSON:
   ],
   "custom_hadiths": [
     {
-      "collection": "Sahih al-Bukhari",
-      "number": "1234",
-      "narrator": "<narrator if known>",
-      "english": "<full translation of hadith>",
+      "collection": "Sahih Muslim",
+      "number": "203",
+      "narrator": "<narrator name>",
+      "english": "<FULL verbatim hadith text in English>",
       "authenticity": "Sahih"
     }
   ],
@@ -517,8 +556,8 @@ ALWAYS respond with ONLY this JSON:
 
 
 async def generate_answer(question: str, mode: str, session_id: str, context: str, conversation_history: list = None) -> Dict[str, Any]:
-    if not groq_client:
-        raise RuntimeError("Groq API key not configured")
+    if not groq_client and not gemini_client:
+        raise RuntimeError("No AI provider configured")
 
     depth_note = "Be thorough and scholarly." if mode == "deep" else "Be simple and beginner-friendly."
 
@@ -529,28 +568,50 @@ EXPLANATION DEPTH: {depth_note}
 RELEVANT CONTEXT (use what fits, ignore the rest):
 {context}
 
+CRITICAL INSTRUCTION FOR THIS RESPONSE:
+If the question references a well-known hadith (e.g., about the Prophet's ﷺ father, specific rulings, etc.), you MUST provide the FULL, EXACT, VERBATIM English text of the hadith from your internal knowledge in `custom_hadiths`, even if the library context above is empty or incomplete. Never omit essential text evidence.
+
 Respond ONLY with the JSON object as instructed. No markdown fences."""
 
     # Build messages with conversation history for multi-turn context
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if conversation_history:
-        # Include last 6 turns max to stay within token limits
         for turn in conversation_history[-6:]:
             messages.append({"role": turn["role"], "content": turn["content"]})
     messages.append({"role": "user", "content": user_text})
 
-    response = await asyncio.to_thread(
-        groq_client.chat.completions.create,
-        model="llama-3.3-70b-versatile",
-        messages=messages,
-        temperature=0.3,
-        max_tokens=2500,
-        response_format={"type": "json_object"},
-    )
+    response_text = None
 
-    response_text = response.choices[0].message.content
+    # --- Try Groq first ---
+    if groq_client:
+        try:
+            response = await asyncio.to_thread(
+                groq_client.chat.completions.create,
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                temperature=0.2,
+                max_tokens=3000,
+                response_format={"type": "json_object"},
+            )
+            response_text = response.choices[0].message.content
+            logging.info("AI response from Groq")
+        except Exception as groq_err:
+            logging.warning("Groq failed (%s), falling back to Gemini", groq_err)
 
-    # Try to extract JSON
+    # --- Fallback to Gemini if Groq failed or not configured ---
+    if response_text is None and _gemini_client:
+        try:
+            gemini_prompt = f"{SYSTEM_PROMPT}\n\n{user_text}"
+            response_text = await asyncio.to_thread(_call_gemini, gemini_prompt)
+            logging.info("AI response from Gemini (Groq fallback)")
+        except Exception as gemini_err:
+            logging.error("Gemini also failed: %s", gemini_err)
+            raise RuntimeError("All AI providers failed. Groq and Gemini both unavailable.")
+
+    if response_text is None:
+        raise RuntimeError("No AI response received")
+
+    # Parse JSON response
     cleaned = response_text.strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
@@ -677,12 +738,67 @@ async def ai_ask(req: AskRequest):
     for ch in custom_hadiths:
         raw_coll = ch.get("collection", "")
         slug = _coll_slug_map.get(raw_coll.lower(), raw_coll)
+        h_num = ch.get("number", "")
+        h_std = ch.get("number", "") # Default visual standard number to AI's initial number
+        h_eng = ch.get("english", "")
+        h_ara = ch.get("arabic", "")
+        
+        # Attempt to align the custom hadith with our dataset so the link works perfectly
+        try:
+            if slug in HADITH_V2_BOOKS:
+                book_items = await _load_hadith_book(slug)
+                ai_norm = "".join(c for c in h_eng.lower() if c.isalnum())
+                aligned_item = None
+                
+                if ai_norm:
+                    # 1. Try exact alphanumeric substring match
+                    for item in book_items:
+                        item_eng = item.get("english", "")
+                        if not item_eng: continue
+                        item_norm = "".join(c for c in item_eng.lower() if c.isalnum())
+                        if ai_norm in item_norm or (len(item_norm) > 20 and item_norm in ai_norm):
+                            aligned_item = item
+                            break
+                    
+                    # 2. Try word overlap if no exact match found
+                    if not aligned_item and len(h_eng.split()) > 5:
+                        ai_words = set(w for w in h_eng.lower().split() if len(w) > 3)
+                        best_score = 0
+                        best_item = None
+                        for item in book_items:
+                            item_eng = item.get("english", "")
+                            if not item_eng: continue
+                            item_words = set(w for w in item_eng.lower().split() if len(w) > 3)
+                            if not item_words: continue
+                            
+                            overlap = len(ai_words.intersection(item_words)) / len(ai_words)
+                            if overlap > best_score:
+                                best_score = overlap
+                                best_item = item
+                        
+                        if best_score >= 0.7:
+                            aligned_item = best_item
+                            
+                if aligned_item:
+                    logging.info(f"Aligned custom hadith: {slug} AI num {h_num} -> Dataset num {aligned_item['number']}")
+                    h_num = str(aligned_item["number"])
+                    # Use visual standard number (like 203) for display, while h_num (500) routes the app
+                    h_std = str(aligned_item.get("standard_number") or aligned_item["number"])
+                    h_eng = aligned_item.get("english") or h_eng
+                    h_ara = aligned_item.get("arabic") or h_ara
+                else:
+                    # If no dataset match, keep what AI returned
+                    h_std = h_num
+        except Exception as e:
+            logging.exception(f"Could not align hadith alignment logic: {e}")
+
         hadith_refs.append({
             "collection": slug,
-            "number": ch.get("number", ""),
+            "number": h_num,
+            "standard_number": h_std,
             "narrator": ch.get("narrator", ""),
-            "arabic": ch.get("arabic", ""),
-            "english": ch.get("english", ""),
+            "arabic": h_ara,
+            "english": h_eng,
             "authenticity": ch.get("authenticity", "Sahih")
         })
 
@@ -962,6 +1078,7 @@ async def _load_hadith_book(slug: str) -> List[Dict[str, Any]]:
                     "id": f"{slug}-{num}",
                     "collection": slug,
                     "number": num,
+                    "standard_number": str(h.get("arabicnumber") or num),
                     "english": h.get("text", ""),
                     "narrator": "",
                     "arabic": arabic_map.get(num, ""),
@@ -1040,6 +1157,7 @@ async def _load_hadith_book(slug: str) -> List[Dict[str, Any]]:
                     "id": f"{slug}-{num}",
                     "collection": slug,
                     "number": num,
+                    "standard_number": str(num),
                     "english": text,
                     "narrator": narrator,
                     "arabic": h.get("arabic", ""),

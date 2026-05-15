@@ -16,13 +16,13 @@ const DAILY_VERSES = [
 ];
 
 const DAILY_DUAS = [
-  { text: "How perfect Allah is, all praise is for Allah, and Allah is the greatest. None has the right to be worshipped except Allah, alone, without any partner.", ref: "Muslim 1/418", link: "/hadith?q=Muslim 1/418" },
-  { text: "O Allah, I ask You for forgiveness and well-being in this world and the Hereafter.", ref: "Abu Dawud 5074", link: "/hadith?q=Abu Dawud 5074" },
-  { text: "O Allah, make me among those who, when they do good, feel pleased, and when they do evil, seek forgiveness.", ref: "Ahmad 1/62", link: "/hadith?q=Ahmad 1/62" },
+  { text: "How perfect Allah is, all praise is for Allah, and Allah is the greatest. None has the right to be worshipped except Allah, alone, without any partner.", ref: "Sahih Muslim 597", link: "/hadith?book=muslim&number=597" },
+  { text: "O Allah, I ask You for forgiveness and well-being in this world and the Hereafter.", ref: "Sunan Abu Dawud 5074", link: "/hadith?book=abudawud&number=5074" },
+  { text: "O Allah, make me among those who, when they do good, feel pleased, and when they do evil, seek forgiveness.", ref: "Sunan Ibn Majah 4251", link: "/hadith?book=ibnmajah&number=4251" },
   { text: "Our Lord, give us in this world that which is good and in the Hereafter that which is good and protect us from the punishment of the Fire.", ref: "Quran 2:201", link: "/quran/2#ayah=201" },
-  { text: "O Allah, guide me and make me steadfast. Remember me of what I have forgotten.", ref: "Tirmidhi 3522", link: "/hadith?q=Tirmidhi 3522" },
-  { text: "O Allah, I take refuge in You from anxiety and sorrow, weakness and laziness, miserliness and cowardice.", ref: "Bukhari 6369", link: "/hadith?q=Bukhari 6369" },
-  { text: "O Allah, You are my Lord. There is no god but You. You created me and I am Your servant.", ref: "Bukhari 6306", link: "/hadith?q=Bukhari 6306" },
+  { text: "O Allah, guide me and make me steadfast. Remember me of what I have forgotten.", ref: "Jami` at-Tirmidhi 3522", link: "/hadith?book=tirmidhi&number=3522" },
+  { text: "O Allah, I take refuge in You from anxiety and sorrow, weakness and laziness, miserliness and cowardice.", ref: "Sahih Bukhari 6369", link: "/hadith?book=bukhari&number=6369" },
+  { text: "O Allah, You are my Lord. There is no god but You. You created me and I am Your servant.", ref: "Sahih Bukhari 6306", link: "/hadith?book=bukhari&number=6306" },
 ];
 
 const QuranIcon = () => (
@@ -79,10 +79,9 @@ const CalendarIcon = () => (
     <path d="M27 8 Q30 5 33 8 Q31 13 29.5 13 Q28 13 27 8Z" fill="#E8A952"/>
   </svg>
 );
-const AllahIcon = () => (
-  <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
-    <circle cx="19" cy="19" r="16" fill="#880E4F" opacity="0.12"/>
-    <text x="19" y="25" textAnchor="middle" fontFamily="Amiri Quran,serif" fontSize="20" fill="#880E4F" fontWeight="bold">الله</text>
+const AllahIcon = ({ size = 20, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 38 38" fill="none">
+    <text x="19" y="27" textAnchor="middle" fontFamily="Amiri Quran,serif" fontSize="22" fill={color} fontWeight="bold">الله</text>
   </svg>
 );
 
@@ -116,7 +115,7 @@ const EXPLORE_ITEMS = [
   { to: "/hadith", label: "Hadith", Icon: ScrollText, color: "#FFF7ED", gradient: "linear-gradient(135deg, #FDBA74, #EA580C)" },
   { to: "https://www.google.com/maps/search/?api=1&query=mosques+near+me", label: "Mosques", Icon: MapPinned, color: "#FDF2F8", gradient: "linear-gradient(135deg, #F472B6, #DB2777)" },
   { to: "/more/tasbih", label: "Tasbih", Icon: TasbihIcon, color: "#FFFBEB", gradient: "linear-gradient(135deg, #FCD34D, #D97706)" },
-  { to: "/more/qibla", label: "Qibla", Icon: Compass, color: "#F5F3FF", gradient: "linear-gradient(135deg, #A78BFA, #7C3AED)" },
+  { to: "/more/names-of-allah", label: "99 Names", Icon: AllahIcon, color: "#FFF1F2", gradient: "linear-gradient(135deg, #FB7185, #880E4F)" },
 ];
 
 function getTimezone() { return -new Date().getTimezoneOffset() / 60; }

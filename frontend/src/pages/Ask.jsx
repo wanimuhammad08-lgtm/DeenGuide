@@ -207,9 +207,7 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 bg-accent/10">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="h-3.5 w-3.5" />
-          </span>
+          <img src="/favicon.png" alt="Logo" className="h-7 w-7" />
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">DeenGuide AI</span>
         </div>
         <button
@@ -277,7 +275,7 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
                   <div className="px-4 py-2 bg-primary/8 border-b border-border/40 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-foreground">{collLabel}</span>
-                      <span className="text-xs text-muted-foreground">#{h.number}</span>
+                      <span className="text-xs text-muted-foreground">#{h.standard_number || h.number}</span>
                       {h.narrator && <span className="text-xs text-muted-foreground">· {h.narrator}</span>}
                       <AuthenticityBadge level={h.authenticity} />
                     </div>

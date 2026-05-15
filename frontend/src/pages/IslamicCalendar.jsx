@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Bell, List, CalendarDays, Loader2 } from "lucide-react";
 import { gregorianToHijri, HIJRI_MONTHS, fetchMonthCalendar, fetchUpcomingEvents } from "@/lib/hijriDate";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -16,6 +16,7 @@ function getFirstDayOfMonth(year, month) {
 }
 
 export default function IslamicCalendar() {
+  const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -138,9 +139,12 @@ export default function IslamicCalendar() {
     <div className="mx-auto max-w-2xl">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <Link to="/more" className="grid h-10 w-10 place-items-center rounded-full border border-border bg-card">
+        <button
+          onClick={() => navigate(-1)}
+          className="grid h-10 w-10 place-items-center rounded-full border border-border bg-card hover:bg-accent transition-colors"
+        >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <h1 className="font-heading text-xl font-bold">Islamic Calendar</h1>
         <div className="flex gap-2">
           <button
