@@ -234,9 +234,21 @@ export default function Hadith() {
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          {books.map((b) => (
-            <CollectionCard key={b.slug} book={b} onOpen={() => setView({ kind: "chapters", book: b.slug })} testid={`hadith-book-card-${b.slug}`} />
-          ))}
+          {books.length === 0
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-border bg-card p-6">
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    <div className="h-12 w-28 rounded-lg bg-muted animate-pulse" />
+                    <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+                    <div className="h-3.5 w-24 rounded bg-muted/70 animate-pulse" />
+                    <div className="h-3 w-20 rounded bg-muted/50 animate-pulse" />
+                  </div>
+                </div>
+              ))
+            : books.map((b) => (
+                <CollectionCard key={b.slug} book={b} onOpen={() => setView({ kind: "chapters", book: b.slug })} testid={`hadith-book-card-${b.slug}`} />
+              ))
+          }
         </div>
         <p className="mt-8 text-center text-xs text-muted-foreground">
           More collections like Musnad Ahmad &amp; Sunan ad-Darimi coming soon.

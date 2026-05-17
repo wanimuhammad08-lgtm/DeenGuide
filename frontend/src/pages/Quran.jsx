@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
-  Search, Loader2, ChevronDown, BookOpen, Headphones, 
-  ChevronRight, Layers, Calendar, Star, Bookmark, BookmarkCheck, X
+  Search, ChevronDown, BookOpen,
+  Layers, Calendar, Star, Bookmark, BookmarkCheck, X
 } from "lucide-react";
 import { quran } from "@/lib/api";
 import { useBookmarks } from "@/lib/bookmarks";
@@ -236,8 +236,20 @@ export default function Quran() {
       )}
 
       {loading ? (
-        <div className="grid place-items-center py-16 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 rounded border border-border/40 bg-card p-4 sm:p-5">
+              <div className="h-10 w-10 shrink-0 rounded-sm bg-muted animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 w-24 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-16 rounded bg-muted/70 animate-pulse" />
+              </div>
+              <div className="space-y-1 text-right">
+                <div className="h-5 w-14 rounded bg-muted animate-pulse ml-auto" />
+                <div className="h-3 w-10 rounded bg-muted/70 animate-pulse ml-auto" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>
