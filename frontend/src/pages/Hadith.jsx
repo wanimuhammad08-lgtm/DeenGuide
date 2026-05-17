@@ -29,7 +29,28 @@ export default function Hadith() {
   const tts = useTTS();
 
   useEffect(() => {
-    hadith.books().then((d) => setBooks(d.books));
+    // Load hadith books from localStorage cache (instant on repeat visits)
+    const BOOKS_KEY = "dg_hadith_books_v2";
+    const BOOKS_TS_KEY = "dg_hadith_books_ts";
+    const CACHE_TTL = 86400000; // 24h
+    try {
+      const cached = localStorage.getItem(BOOKS_KEY);
+      const cachedTs = parseInt(localStorage.getItem(BOOKS_TS_KEY) || "0");
+      if (cached && Date.now() - cachedTs < CACHE_TTL) {
+        setBooks(JSON.parse(cached));
+        // Still proceed to check deep-link params below
+      } else {
+        hadith.books().then((d) => {
+          setBooks(d.books);
+          try {
+            localStorage.setItem(BOOKS_KEY, JSON.stringify(d.books));
+            localStorage.setItem(BOOKS_TS_KEY, String(Date.now()));
+          } catch {}
+        });
+      }
+    } catch {
+      hadith.books().then((d) => setBooks(d.books));
+    }
 
     // Deep-link hook for search from dashboard
     const params = new URLSearchParams(location.search);

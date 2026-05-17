@@ -90,8 +90,11 @@ ALQURAN_BASE = "https://api.alquran.cloud/v1"
 HADITH_CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions"
 TAFSIR_CDN = "https://cdn.jsdelivr.net/gh/spa5k/tafsir_api@main/tafsir"
 
-# Cache for surah list
+# Cache for surah list (in-memory with TTL — never fetches twice in same session)
+import time as _time
 _surah_cache: Dict[str, Any] = {}
+_surah_cache_ts: float = 0.0
+_SURAH_CACHE_TTL = 86400  # 24 hours
 
 # ── Hadith v2 (large dataset, lazy loaded) ────────────────────────────────────
 HADITH_V2_BOOKS: Dict[str, Dict[str, Any]] = {
@@ -669,16 +672,26 @@ async def root():
     return {"name": "DeenGuide API", "status": "ok"}
 
 
+@api.get("/health")
+async def health():
+    """Keep-alive endpoint — returns instantly. Frontend pings this on startup to wake Render."""
+    hadith_loaded = sum(len(v) for v in _hadith_v2_cache.values())
+    return {
+        "status": "ok",
+        "hadith_preloaded": hadith_loaded,
+        "ts": _time.time(),
+    }
+
+
 # ── AI ──
 @api.post("/ai/ask", response_model=AskResponse)
 async def ai_ask(req: AskRequest):
     session_id = req.session_id or str(uuid.uuid4())
 
-    # Ensure v2 hadith corpus is loaded for RAG retrieval
-    try:
-        await asyncio.wait_for(_ensure_all_books_loaded(), timeout=60)
-    except Exception:
-        logging.warning("hadith v2 corpus not fully loaded; falling back to local seed only")
+    # Trigger hadith corpus loading in background WITHOUT blocking the AI response.
+    # If already loaded, this returns instantly.
+    if not _hadith_v2_loaded:
+        asyncio.create_task(_ensure_all_books_loaded())
 
     # RAG: retrieve top hadith from the actual indexed v2 corpus
     rag_hits = retrieve_hadiths_v2(req.question, limit=8)
@@ -840,7 +853,9 @@ async def hadith_search(q: str, page: int = 1, per_page: int = 20):
 
 @api.get("/quran/surahs")
 async def quran_surahs():
-    if "list" in _surah_cache:
+    global _surah_cache_ts
+    now = _time.time()
+    if "list" in _surah_cache and (now - _surah_cache_ts) < _SURAH_CACHE_TTL:
         return _surah_cache["list"]
     try:
         data = await asyncio.to_thread(fetch_alquran, "/surah")
@@ -854,6 +869,7 @@ async def quran_surahs():
                     break
             s["name"] = n.strip()
         _surah_cache["list"] = surahs
+        _surah_cache_ts = now
         return surahs
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Quran API error: {e}")

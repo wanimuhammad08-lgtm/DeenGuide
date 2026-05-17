@@ -49,10 +49,34 @@ export default function Quran() {
 
   useBookmarks();
 
+  const SURAH_CACHE_KEY = "dg_surah_list_v2";
+  const SURAH_CACHE_TS_KEY = "dg_surah_list_ts";
+  const CACHE_TTL = 86400000; // 24 hours in ms
+
   useEffect(() => {
+    // 1. Try to load from localStorage cache first (instant)
+    try {
+      const cached = localStorage.getItem(SURAH_CACHE_KEY);
+      const cachedTs = parseInt(localStorage.getItem(SURAH_CACHE_TS_KEY) || "0");
+      if (cached && Date.now() - cachedTs < CACHE_TTL) {
+        setList(JSON.parse(cached));
+        setLoading(false);
+        refreshLocal();
+        return; // Skip network fetch — data is fresh enough
+      }
+    } catch {}
+
+    // 2. No valid cache — fetch from backend
     quran
       .surahs()
-      .then((d) => setList(d))
+      .then((d) => {
+        setList(d);
+        // Save to localStorage for next visit
+        try {
+          localStorage.setItem(SURAH_CACHE_KEY, JSON.stringify(d));
+          localStorage.setItem(SURAH_CACHE_TS_KEY, String(Date.now()));
+        } catch {}
+      })
       .catch((e) => setError(e?.response?.data?.detail || e.message))
       .finally(() => setLoading(false));
     refreshLocal();

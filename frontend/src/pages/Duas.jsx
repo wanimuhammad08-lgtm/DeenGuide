@@ -26,7 +26,10 @@ export default function Duas() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    duasApi.categories().then((cats) => {
+    const CATS_KEY = "dg_duas_cats_v2";
+    const CATS_TS_KEY = "dg_duas_cats_ts";
+    const CACHE_TTL = 86400000; // 24h
+    const applyCategories = (cats) => {
       setAllCats(cats);
       const grouped = {};
       cats.forEach((cat) => {
@@ -35,6 +38,22 @@ export default function Duas() {
         grouped[s].push(cat);
       });
       setSections(grouped);
+    };
+    try {
+      const cached = localStorage.getItem(CATS_KEY);
+      const cachedTs = parseInt(localStorage.getItem(CATS_TS_KEY) || "0");
+      if (cached && Date.now() - cachedTs < CACHE_TTL) {
+        applyCategories(JSON.parse(cached));
+        setLoading(false);
+        return;
+      }
+    } catch {}
+    duasApi.categories().then((cats) => {
+      applyCategories(cats);
+      try {
+        localStorage.setItem(CATS_KEY, JSON.stringify(cats));
+        localStorage.setItem(CATS_TS_KEY, String(Date.now()));
+      } catch {}
     }).finally(() => setLoading(false));
   }, []);
 
