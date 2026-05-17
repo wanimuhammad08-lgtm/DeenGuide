@@ -7,6 +7,8 @@ import { useTTS } from "@/lib/tts";
 import { AuthenticityBadge } from "@/components/AuthenticityBadge";
 import { useAI } from "@/context/AIContext";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const collectionLabels = {
   bukhari: "Sahih al-Bukhari",
@@ -225,8 +227,17 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
 
       <div className="p-5 sm:p-6 space-y-6">
         {/* Main Narrative Answer (Intro) */}
-        <div className="text-[15px] leading-[1.8] text-foreground/90 whitespace-pre-wrap font-medium space-y-4">
-          {data.detailed_answer ? data.detailed_answer : data.answer}
+        <div className="prose prose-sm max-w-none text-foreground/90
+          prose-p:leading-relaxed prose-p:mb-4 
+          prose-headings:font-bold prose-headings:text-foreground prose-headings:mb-3 prose-headings:mt-6
+          prose-h2:text-lg prose-h3:text-base
+          prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-4 prose-ul:space-y-1.5
+          prose-ol:list-decimal prose-ol:pl-5 prose-ol:mb-4 prose-ol:space-y-1.5
+          prose-strong:text-primary prose-strong:font-bold"
+        >
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {data.detailed_answer ? data.detailed_answer : data.answer}
+          </ReactMarkdown>
         </div>
 
         {/* Fallback for legacy 'explanation' if any */}
@@ -280,7 +291,7 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
                       <AuthenticityBadge level={h.authenticity} />
                     </div>
                     <Link
-                      to={`/hadith?book=${normalizeCollection(h.collection)}&number=${h.number}`}
+                      to={`/hadith?book=${normalizeCollection(h.collection)}&number=${h.number}&eng=${encodeURIComponent(h.english || "")}`}
                       className="text-[11px] font-semibold text-primary hover:underline"
                     >
                       Read in App ↗

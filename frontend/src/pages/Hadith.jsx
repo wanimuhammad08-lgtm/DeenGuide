@@ -57,11 +57,17 @@ export default function Hadith() {
     const q = params.get("q");
     const book = params.get("book");
     const number = params.get("number");
+    const eng = params.get("eng");
     
     if (book && number) {
       setView({ kind: "single", loading: true });
       hadith.detail(book, number)
-        .then(res => setView({ kind: "single", hadith: res, loading: false }))
+        .then(res => {
+          if (eng) {
+            res.english = eng;
+          }
+          setView({ kind: "single", hadith: res, loading: false })
+        })
         .catch(() => {
           toast.error("Hadith not found");
           setView({ kind: "grid" });
