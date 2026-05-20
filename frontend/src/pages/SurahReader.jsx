@@ -63,7 +63,7 @@ export default function SurahReader() {
   const [isTranslationSelectorOpen, setIsTranslationSelectorOpen] = useState(false);
   const [translationSearch, setTranslationSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:font-size') || '5', 10));
+  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:font-size') || '1', 10));
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollProgressRef = useRef(0);
   const stickyHeaderRef = useRef(null);
@@ -184,7 +184,7 @@ export default function SurahReader() {
   const [repeatMode, setRepeatMode] = useState(() => localStorage.getItem('deenguide:repeat') || 'off'); // 'off' | 'one' | 'all'
   const [volume, setVolume] = useState(() => parseFloat(localStorage.getItem('deenguide:volume') || '1'));
   const [theme, setTheme] = useState(() => localStorage.getItem('deenguide:theme') || 'light');
-  const [translationFontSize, setTranslationFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:translation-font-size') || '5'));
+  const [translationFontSize, setTranslationFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:translation-font-size') || '1'));
   // Quran.com-style repeat settings
   const [repeatTab, setRepeatTab] = useState(() => localStorage.getItem('deenguide:repeat-tab') || 'single');
   const [repeatPlayRange, setRepeatPlayRange] = useState(() => parseInt(localStorage.getItem('deenguide:repeat-play-range') || '2', 10));
