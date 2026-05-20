@@ -33,7 +33,6 @@ const LANG_TO_BCP47 = {
 const DEFAULT_MIX = { recite: true, translate: false, tafsir: false };
 
 const POPULAR_FALLBACK = [
-  { id: 131, author_name: "Dr. Mustafa Khattab", name: "The Clear Quran" },
   { id: 20, author_name: "Saheeh International", name: "Saheeh International" },
   { id: 85, author_name: "Muhsin Khan", name: "Muhsin Khan" },
   { id: 95, author_name: "Maududi", name: "Tafhim-ul-Quran" },
@@ -64,7 +63,7 @@ export default function SurahReader() {
   const [isTranslationSelectorOpen, setIsTranslationSelectorOpen] = useState(false);
   const [translationSearch, setTranslationSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:font-size') || '3', 10));
+  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:font-size') || '5', 10));
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollProgressRef = useRef(0);
   const stickyHeaderRef = useRef(null);
@@ -106,18 +105,18 @@ export default function SurahReader() {
       let ids = [];
       if (Array.isArray(val)) ids = val.map(v => parseInt(v, 10)).filter(v => !isNaN(v));
       else if (val && (typeof val === 'number' || typeof val === 'string')) ids = [parseInt(val, 10)];
-      else ids = [131];
+      else ids = [20];
       
       // Deduplicate
       return [...new Set(ids)];
     }
-    catch { return [131]; }
+    catch { return [20]; }
   });
   const [tafsirEdition, setTafsirEdition] = useState(() => localStorage.getItem(TAFSIR_KEY) || "en-tafisr-ibn-kathir");
 
   const [wbwSettings, setWbwSettings] = useState(() => {
     const defaults = { 
-      translation: true, 
+      translation: false, 
       transliteration: false,
       onClick: 'recitation',
       hoverTranslation: false,
@@ -185,7 +184,7 @@ export default function SurahReader() {
   const [repeatMode, setRepeatMode] = useState(() => localStorage.getItem('deenguide:repeat') || 'off'); // 'off' | 'one' | 'all'
   const [volume, setVolume] = useState(() => parseFloat(localStorage.getItem('deenguide:volume') || '1'));
   const [theme, setTheme] = useState(() => localStorage.getItem('deenguide:theme') || 'light');
-  const [translationFontSize, setTranslationFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:translation-font-size') || '3'));
+  const [translationFontSize, setTranslationFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:translation-font-size') || '5'));
   // Quran.com-style repeat settings
   const [repeatTab, setRepeatTab] = useState(() => localStorage.getItem('deenguide:repeat-tab') || 'single');
   const [repeatPlayRange, setRepeatPlayRange] = useState(() => parseInt(localStorage.getItem('deenguide:repeat-play-range') || '2', 10));
@@ -1259,7 +1258,7 @@ export default function SurahReader() {
                         </div>
                         <div className="max-h-[250px] overflow-y-auto scroll-thin">
                           <div className="max-h-[250px] overflow-y-auto scroll-thin">
-                            {editions.filter(e => translationEditions.includes(e.id) || [131, 20, 97, 14, 85].includes(e.id)).slice(0, 8).map(e => (
+                            {editions.filter(e => translationEditions.includes(e.id) || [20, 97, 14, 85].includes(e.id)).slice(0, 8).map(e => (
                               <button
                                 key={e.id}
                                 onClick={() => {
