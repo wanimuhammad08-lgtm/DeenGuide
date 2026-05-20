@@ -1,7 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Home, BookOpen, Hand, Bookmark, LayoutGrid, Menu, X, Sparkles, ScrollText } from "lucide-react";
-import { useState } from "react";
-import { ThemeToggle } from "./ThemeToggle";
+import { Home, BookOpen, Hand, LayoutGrid, Sparkles, ScrollText } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home, testid: "nav-home", exact: true },
@@ -28,14 +26,14 @@ const Brand = () => (
 );
 
 export const Layout = () => {
-  const [open, setOpen] = useState(false);
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Top header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
-          <Brand />
+        <div className="mx-auto flex max-w-7xl items-center px-4 py-3 sm:px-8">
+          <div className="flex-1">
+            <Brand />
+          </div>
           <nav className="hidden items-center gap-1 lg:flex">
             {desktopNavItems.map((n) => (
               <NavLink
@@ -53,40 +51,8 @@ export const Layout = () => {
               </NavLink>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <button
-              data-testid="mobile-menu-toggle"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 lg:hidden"
-              onClick={() => setOpen((v) => !v)}
-              aria-label="Open menu"
-            >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
+          <div className="flex-1" />
         </div>
-        {open && (
-          <div className="border-t border-border bg-background lg:hidden">
-            <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
-              {navItems.map((n) => (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  data-testid={`${n.testid}-mobile`}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium ${
-                      isActive ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent/60"
-                    }`
-                  }
-                >
-                  <n.icon className="h-5 w-5" />
-                  {n.label}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-        )}
       </header>
 
       <main className="mx-auto max-w-7xl px-4 pb-24 pt-3 sm:px-8 sm:pt-6 lg:pb-12">

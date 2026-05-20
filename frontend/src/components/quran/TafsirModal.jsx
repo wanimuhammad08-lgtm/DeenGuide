@@ -122,7 +122,7 @@ export default function TafsirModal({
             </div>
             {ayahData && (
               <div className="font-arabic text-[28px] sm:text-[32px] leading-[2.2] text-foreground text-right" dir="rtl">
-                <span dangerouslySetInnerHTML={{ __html: arabicScript === 'tajweed' ? ayahData.tajweed : (arabicScript === 'indopak' ? ayahData.indopak : ayahData.arabic) }} />
+                <span dangerouslySetInnerHTML={{ __html: (arabicScript === 'tajweed' ? ayahData.tajweed : (arabicScript === 'indopak' ? ayahData.indopak : ayahData.arabic) || '').replace(/<span[^>]*class=end[^>]*>.*?<\/span>/gi, '').replace(/<span[^>]*class="end"[^>]*>.*?<\/span>/gi, '').replace(/\u06DD[\u0660-\u0669]+/g, '').replace(/\s+$/, '') }} />
                 <span className="text-primary text-[20px] mr-2">﴾{ayahNumber}﴿</span>
               </div>
             )}

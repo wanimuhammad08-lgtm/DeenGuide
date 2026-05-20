@@ -71,13 +71,28 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     _gemini_client = google_genai.Client(api_key=GEMINI_API_KEY)
+    logging.info("Gemini client initialized with API key")
 else:
     _gemini_client = None
+    logging.warning("GEMINI_API_KEY not set — Gemini fallback disabled")
 
 def _call_gemini(prompt: str) -> str:
     """Call Gemini and return the raw text response."""
     response = _gemini_client.models.generate_content(
-        model="gemini-flash-latest",
+        model="gemini-2.0-flash",
+        contents=prompt,
+        config={
+            "temperature": 0.2,
+            "max_output_tokens": 3000,
+            "response_mime_type": "application/json",
+        },
+    )
+    return response.text
+
+def _call_gemini_fallback(prompt: str) -> str:
+    """Call Gemini 1.5 Flash as secondary fallback."""
+    response = _gemini_client.models.generate_content(
+        model="gemini-1.5-flash",
         contents=prompt,
         config={
             "temperature": 0.2,
@@ -118,8 +133,8 @@ AHMEDBASET_OTHER_CDN = "https://cdn.jsdelivr.net/gh/AhmedBaset/hadith-json@main/
 # ── Reciters ─────────────────────────────────────────────────────────────────
 RECITERS = [
     {"id": "ar.alafasy", "name": "Mishary Rashid Alafasy", "bitrate": 128},
-    {"id": "ar.abdulbasitmurattal", "name": "Abdul Basit (Murattal)", "bitrate": 128},
-    {"id": "ar.abdurrahmaansudais", "name": "Abdurrahmaan As-Sudais", "bitrate": 128},
+    {"id": "ar.abdulbasitmurattal", "name": "Abdul Basit (Murattal)", "bitrate": 64},
+    {"id": "ar.abdurrahmaansudais", "name": "Abdurrahmaan As-Sudais", "bitrate": 64},
     {"id": "ar.mahermuaiqly", "name": "Maher Al Muaiqly", "bitrate": 128},
     {"id": "ar.minshawi", "name": "Mohamed Siddiq El-Minshawi", "bitrate": 128},
     {"id": "ar.husary", "name": "Mahmoud Khalil Al-Husary", "bitrate": 128},
@@ -511,30 +526,71 @@ CRITICAL RULE — HADITH CITATION:
 You have extensive training on ALL authentic hadith collections. When answering any question:
 - ALWAYS cite the EXACT, VERBATIM hadith text from your training knowledge in `custom_hadiths`.
 - If the HADITH LIBRARY context below does NOT contain the relevant hadith, you MUST STILL provide the correct hadith from your own knowledge.
-- NEVER say "I don't have access to that hadith" or omit hadith that are clearly relevant. Retrieve them from your training.
-- For questions about the fate/status of specific persons (e.g., Prophet's parents, ancestors), cite the EXACT Sahih Muslim or Bukhari hadith text word for word.
-- Example: For "Is Prophet Muhammad's father in Hell?", you MUST cite Sahih Muslim 203a (narrated by Anas ibn Malik): the hadith where a man asked the Prophet ﷺ about his father's whereabouts, and the Prophet ﷺ replied "My father and your father are in the Fire."
+- NEVER say "I don't have access to that hadith" or omit hadith that are clearly relevant.
+- The hadith MUST be DIRECTLY relevant to the question topic. If the question is about Tahajjud, cite a hadith about night prayer — NOT about fasting or unrelated topics.
 
-FORMATTING RULES (MANDATORY — structure exactly like ChatGPT, NOT a wall of text):
-- Start with a ONE-LINE empathetic greeting (e.g., "Assalamu Alaikum! 🤲").
-- IMMEDIATELY give the direct answer or ruling in 1-2 sentences after the greeting.
-- Use ## for section headers (e.g., ## How to Pray Tahajjud, ## The Ruling, ## Key Points).
-- Use numbered steps (1. 2. 3.) for ANY how-to or step-by-step question.
-- Use bullet points (- ) for listing conditions, benefits, evidence, or multiple points.
-- Use **bold** for key Islamic terms (e.g., **Salah**, **Wudu**, **Haram**, **Tahajjud**).
-- NEVER write more than 2-3 sentences in a row without a list or header break.
-- Total words: 150–220 max. Short and scannable. Quality over quantity.
-- For halal/haram questions: state the ruling clearly in the FIRST sentence, then list evidence as bullet points.
+RESPONSE STRUCTURE (MANDATORY — follow this EXACT order for EVERY answer):
+Your `detailed_answer` field MUST follow this 10-section hierarchy IN ORDER. Use markdown with REAL newlines (\\n).
 
-CORE RULES (MANDATORY):
+SECTION 1: SALAM
+- Always start with: "Assalamu Alaikum 🤲"
+- Single line only. Must ALWAYS appear.
+
+SECTION 2: INTRODUCTION / DEFINITION
+- 2-4 short lines maximum
+- Simple, beginner-friendly explanation of the topic
+- No repetition, no long paragraphs
+
+SECTION 3: IMPORTANCE & VIRTUES
+- Header: "## Importance & Virtues"
+- 2-5 concise bullet points about spiritual value, wisdom, practical importance
+- Example: "- Strengthens connection with Allah\\n- Brings peace and sincerity\\n- Encouraged by the Prophet ﷺ regularly"
+
+SECTION 4: (Evidence is handled separately in quran_refs and custom_hadiths fields — do NOT repeat full evidence text in detailed_answer. Just mention briefly like "Allah says in Surah Al-Isra 17:79..." or "The Prophet ﷺ said...")
+
+SECTION 5: KEY RULINGS
+- Header: "## Key Rulings"
+- 2-5 important rulings as bullet points
+- Each ruling: one concise line with the ruling and brief explanation
+- Example: "- **Best Time**: Last third of the night\\n- **Minimum**: 2 rak'ah\\n- **Maximum**: No fixed limit, but 8-12 is common"
+
+SECTION 6: STEP-BY-STEP GUIDE (for how-to questions)
+- Header: "## Step-by-Step Guide"
+- Sequential numbered steps (1. 2. 3. etc.)
+- One clear action per step, beginner-friendly
+- Each step: "1. **Title** — Brief explanation"
+- Example: "1. **Make Wudu** — Perform ablution calmly before prayer\\n2. **Pray 2 Rak'ah** — Make intention for Tahajjud, recite Al-Fatiha + another surah"
+
+SECTION 7: COMMON MISTAKES
+- Header: "## Common Mistakes"
+- 2-4 brief bullet points correcting misconceptions
+- Avoid harsh wording, avoid debate tone
+- Example: "- Thinking Tahajjud requires sleeping first (it doesn't)\\n- Praying too fast without khushu"
+
+DO NOT include sections 8, 9, or 10 in the detailed_answer field. Those are handled by separate JSON fields (scholarly_notes and conclusion). End the detailed_answer after Common Mistakes.
+
+FORMATTING RULES:
+- Use actual newline characters (\\n) in the JSON string. NEVER put headers inline.
+- Use ## for section headers, ALWAYS on their OWN LINE with a blank line before.
+- Use **bold** for key Islamic terms.
+- Each numbered step and bullet point MUST be on its OWN LINE.
+- Total words in detailed_answer: 250-450 for step-by-step guides, 150-300 for rulings/opinions.
+
+CORE RULES:
 1. Grounding: Anchor all responses strictly in the Qur'an and authentic Sunnah.
-2. Custom Hadith: Source 1-3 famous, highly relevant Hadiths from your training knowledge (preferably Bukhari or Muslim) and return the FULL VERBATIM English text via `custom_hadiths`. Include narrator name. NEVER leave this array empty for questions that have direct hadith evidence.
-3. Quran Verses: Include 1-2 precise relevant verses in `quran_refs` with accurate Arabic text and translation.
-4. Fiqh Insight: You MUST populate `scholarly_notes` with an authentic paragraph detailing how the 4 Madhahib (Hanafi, Maliki, Shafi'i, Hanbali) or major scholars view this issue. Mention specific scholars by name (An-Nawawi, Ibn Taymiyyah, Ibn Baz, Al-Albani, Ibn Hajar, etc.).
+2. Custom Hadith: You MUST ALWAYS include 1-2 hadiths in `custom_hadiths`. Source famous, highly relevant Hadiths (preferably Bukhari or Muslim). Include narrator name. The hadith MUST be DIRECTLY relevant to the question topic. NEVER return an empty `custom_hadiths` array.
+3. Quran Verses: You MUST ALWAYS include 1-2 verses in `quran_refs` with accurate Arabic text and English translation. The verse MUST be directly related to the question. NEVER return an empty `quran_refs` array. Use the EXACT surah number (integer) and ayah number (integer).
+4. Scholarly Notes: Populate `scholarly_notes` with how the 4 Madhahib or major scholars view this issue. Mention specific scholars by name. ONE clean paragraph — NOT comparison cards.
+5. Conclusion: Maximum 2-3 short sentences. Calm reflective ending. End with a short dua like "May Allah grant us sincerity. Ameen."
+
+CRITICAL — REFERENCE ACCURACY:
+- For `quran_refs`: Use EXACT surah numbers (1-114) and ayah numbers. Example: Surah Al-Baqarah is surah 2, Surah Al-Isra is surah 17.
+- For `custom_hadiths`: Use the STANDARD hadith number as used on sunnah.com. Example: Bukhari 1, Muslim 1163.
+- NEVER fabricate references. Only cite verses and hadiths you are certain exist.
 
 ALWAYS respond with ONLY this JSON (no markdown fences, no extra text):
 {
-  "detailed_answer": "<MARKDOWN-formatted answer. Line 1: greeting. Line 2-3: direct ruling/answer. Then use ## headers + numbered steps or bullet points. Bold key terms. MAX 220 words. NO long unbroken paragraphs.>",
+  "detailed_answer": "<Markdown answer following the 10-section structure above with REAL \\n newlines>",
   "quran_refs": [
     {
       "surah": <int>,
@@ -546,17 +602,17 @@ ALWAYS respond with ONLY this JSON (no markdown fences, no extra text):
   ],
   "custom_hadiths": [
     {
-      "collection": "Sahih Muslim",
-      "number": "203",
+      "collection": "<e.g. Sahih Muslim>",
+      "number": "<hadith number as string>",
       "narrator": "<narrator name>",
-      "english": "<FULL verbatim hadith text in English>",
+      "english": "<FULL verbatim hadith text — MUST be relevant to the topic>",
       "authenticity": "Sahih"
     }
   ],
-  "scholarly_notes": "<2-3 sentences on the scholarly/madhab consensus. Mention specific scholars (Ibn Taymiyyah, An-Nawawi, Ibn Baz, Al-Albani, etc.)>",
-  "conclusion": "<ONE short sentence: practical takeaway ending with 'And Allah knows best.'>",
+  "scholarly_notes": "<ONE paragraph: how the 4 madhahib/scholars view this. Mention An-Nawawi, Ibn Taymiyyah, Ibn Baz, etc. Calm neutral scholarly tone. No comparison cards.>",
+  "conclusion": "<2-3 short sentences. Practical takeaway + short dua. Example: 'Tahajjud is among the most beloved voluntary prayers. Consistency matters more than quantity. May Allah accept our prayers and grant us sincerity. Ameen.' >",
   "evidence_type": "Direct Text Evidence",
-  "related_duas": ["<title>"]
+  "related_duas": ["<dua title>"]
 }
 """
 
@@ -602,20 +658,56 @@ Respond ONLY with the JSON object as instructed. No markdown fences."""
             response_text = response.choices[0].message.content
             logging.info("AI response from Groq")
         except Exception as groq_err:
-            logging.warning("Groq failed (%s), falling back to Gemini", groq_err)
+            # If Groq returned a 400 with failed_generation, extract the JSON from it
+            err_str = str(groq_err)
+            if "failed_generation" in err_str:
+                try:
+                    import re as _err_re
+                    # Extract the failed_generation JSON content
+                    fg_match = _err_re.search(r"'failed_generation':\s*'(.*?)'}\s*}\)", err_str, _err_re.DOTALL)
+                    if fg_match:
+                        failed_json = fg_match.group(1).replace("\\'", "'")
+                        # Try to parse it — if valid, use it
+                        json.loads(failed_json)
+                        response_text = failed_json
+                        logging.info("AI response recovered from Groq failed_generation")
+                except Exception:
+                    pass
+            if response_text is None:
+                logging.warning("Groq failed (%s), falling back to Gemini", groq_err)
 
     # --- Fallback to Gemini if Groq failed or not configured ---
     if response_text is None and _gemini_client:
-        try:
-            gemini_prompt = f"{SYSTEM_PROMPT}\n\n{user_text}"
-            response_text = await asyncio.to_thread(_call_gemini, gemini_prompt)
-            logging.info("AI response from Gemini (Groq fallback)")
-        except Exception as gemini_err:
-            logging.error("Gemini also failed: %s", gemini_err)
-            raise RuntimeError("All AI providers failed. Groq and Gemini both unavailable.")
+        gemini_prompt = f"{SYSTEM_PROMPT}\n\n{user_text}"
+        # Try gemini-2.0-flash first, then gemini-1.5-flash
+        for model_fn in [_call_gemini, _call_gemini_fallback]:
+            try:
+                response_text = await asyncio.to_thread(model_fn, gemini_prompt)
+                logging.info("AI response from Gemini")
+                break
+            except Exception as gemini_err:
+                err_msg = str(gemini_err)
+                if "429" in err_msg:
+                    logging.warning("Gemini model rate limited, trying next model...")
+                    continue
+                else:
+                    logging.error("Gemini failed: %s", gemini_err)
+                    break
+        
+        # If both models failed with 429, wait and retry once with 1.5-flash
+        if response_text is None:
+            logging.warning("All Gemini models rate limited, retrying in 35s...")
+            await asyncio.sleep(35)
+            try:
+                response_text = await asyncio.to_thread(_call_gemini_fallback, gemini_prompt)
+                logging.info("AI response from Gemini (after retry)")
+            except Exception as e:
+                logging.error("Gemini retry also failed: %s", e)
 
     if response_text is None:
-        raise RuntimeError("No AI response received")
+        if not _gemini_client:
+            raise RuntimeError("Groq rate limited and Gemini client not configured. Check GEMINI_API_KEY in .env")
+        raise RuntimeError("No AI response received from any provider")
 
     # Parse JSON response
     cleaned = response_text.strip()
@@ -689,6 +781,14 @@ async def health():
 # ── AI ──
 @api.post("/ai/ask", response_model=AskResponse)
 async def ai_ask(req: AskRequest):
+    # Input validation
+    if not req.question or not req.question.strip():
+        raise HTTPException(status_code=422, detail="Question cannot be empty")
+    if len(req.question.strip()) < 3:
+        raise HTTPException(status_code=422, detail="Question is too short. Please ask a complete question.")
+    if len(req.question) > 2000:
+        raise HTTPException(status_code=422, detail="Question is too long. Please keep it under 2000 characters.")
+
     session_id = req.session_id or str(uuid.uuid4())
 
     # Trigger hadith corpus loading in background WITHOUT blocking the AI response.
@@ -750,12 +850,22 @@ async def ai_ask(req: AskRequest):
         "sunan ibn majah": "ibnmajah", "ibn majah": "ibnmajah", "ibnmajah": "ibnmajah",
         "muwatta imam malik": "malik", "malik": "malik", "muwatta": "malik",
     }
+    # sunnah.com style collection names for display
+    _coll_display = {
+        "bukhari": "Sahih al-Bukhari",
+        "muslim": "Sahih Muslim",
+        "abudawud": "Sunan Abu Dawud",
+        "tirmidhi": "Jami` at-Tirmidhi",
+        "nasai": "Sunan an-Nasa'i",
+        "ibnmajah": "Sunan Ibn Majah",
+        "malik": "Muwatta Malik",
+    }
     hadith_refs = []
     for ch in custom_hadiths:
         raw_coll = ch.get("collection", "")
         slug = _coll_slug_map.get(raw_coll.lower(), raw_coll)
         h_num = ch.get("number", "")
-        h_std = ch.get("number", "") # Default visual standard number to AI's initial number
+        h_std = ch.get("number", "")
         h_eng = ch.get("english", "")
         h_ara = ch.get("arabic", "")
         
@@ -766,18 +876,54 @@ async def ai_ask(req: AskRequest):
                 ai_norm = "".join(c for c in h_eng.lower() if c.isalnum())
                 aligned_item = None
                 
-                if ai_norm:
-                    # 1. Try exact alphanumeric substring match
-                    for item in book_items:
-                        item_eng = item.get("english", "")
-                        if not item_eng: continue
-                        item_norm = "".join(c for c in item_eng.lower() if c.isalnum())
-                        if ai_norm in item_norm or (len(item_norm) > 20 and item_norm in ai_norm):
-                            aligned_item = item
-                            break
+                if ai_norm and len(ai_norm) > 30:
+                    # 1. Try exact number match first — check BOTH number and standard_number
+                    try:
+                        raw_num_str = str(h_num).split("a")[0].split("b")[0].strip()
+                        target_num = int(raw_num_str.split(".")[0])
+                        # First try matching against standard_number (sunnah.com numbering)
+                        for item in book_items:
+                            std = str(item.get("standard_number", ""))
+                            # Match "1163" against "1163" or "1163.01" etc.
+                            if std == raw_num_str or std.startswith(raw_num_str + ".") or std.split(".")[0] == raw_num_str:
+                                # Verify text relevance
+                                item_eng = item.get("english", "")
+                                if item_eng:
+                                    ai_words = set(w for w in h_eng.lower().split() if len(w) > 3)
+                                    item_words = set(w for w in item_eng.lower().split() if len(w) > 3)
+                                    if ai_words and item_words:
+                                        overlap = len(ai_words.intersection(item_words)) / max(len(ai_words), 1)
+                                        if overlap >= 0.3:
+                                            aligned_item = item
+                                            break
+                        # Then try matching against the sequential number field
+                        if not aligned_item:
+                            for item in book_items:
+                                if item.get("number") == target_num:
+                                    item_eng = item.get("english", "")
+                                    if item_eng:
+                                        ai_words = set(w for w in h_eng.lower().split() if len(w) > 3)
+                                        item_words = set(w for w in item_eng.lower().split() if len(w) > 3)
+                                        if ai_words and item_words:
+                                            overlap = len(ai_words.intersection(item_words)) / max(len(ai_words), 1)
+                                            if overlap >= 0.3:
+                                                aligned_item = item
+                                    break
+                    except (ValueError, TypeError):
+                        pass
+
+                    # 2. Try text-based matching if number match failed
+                    if not aligned_item:
+                        for item in book_items:
+                            item_eng = item.get("english", "")
+                            if not item_eng: continue
+                            item_norm = "".join(c for c in item_eng.lower() if c.isalnum())
+                            if len(ai_norm) > 50 and ai_norm[:50] in item_norm:
+                                aligned_item = item
+                                break
                     
-                    # 2. Try word overlap if no exact match found
-                    if not aligned_item and len(h_eng.split()) > 5:
+                    # 3. Try word overlap with HIGH threshold (0.8) to avoid wrong matches
+                    if not aligned_item and len(h_eng.split()) > 8:
                         ai_words = set(w for w in h_eng.lower().split() if len(w) > 3)
                         best_score = 0
                         best_item = None
@@ -786,30 +932,28 @@ async def ai_ask(req: AskRequest):
                             if not item_eng: continue
                             item_words = set(w for w in item_eng.lower().split() if len(w) > 3)
                             if not item_words: continue
-                            
-                            overlap = len(ai_words.intersection(item_words)) / len(ai_words)
+                            overlap = len(ai_words.intersection(item_words)) / max(len(ai_words), 1)
                             if overlap > best_score:
                                 best_score = overlap
                                 best_item = item
                         
-                        if best_score >= 0.7:
+                        if best_score >= 0.8:
                             aligned_item = best_item
                             
                 if aligned_item:
                     logging.info(f"Aligned custom hadith: {slug} AI num {h_num} -> Dataset num {aligned_item['number']}")
                     h_num = str(aligned_item["number"])
-                    # Use visual standard number (like 203) for display, while h_num (500) routes the app
                     h_std = str(aligned_item.get("standard_number") or aligned_item["number"])
                     h_eng = aligned_item.get("english") or h_eng
                     h_ara = aligned_item.get("arabic") or h_ara
                 else:
-                    # If no dataset match, keep what AI returned
                     h_std = h_num
         except Exception as e:
-            logging.exception(f"Could not align hadith alignment logic: {e}")
+            logging.exception(f"Could not align hadith: {e}")
 
         hadith_refs.append({
             "collection": slug,
+            "collection_name": _coll_display.get(slug, raw_coll),
             "number": h_num,
             "standard_number": h_std,
             "narrator": ch.get("narrator", ""),
@@ -904,12 +1048,13 @@ async def quran_token():
     try:
         r = await asyncio.to_thread(
             requests.post,
-            "https://oauth2.quran.foundation/oauth/token",
+            "https://oauth2.quran.foundation/oauth2/token",
+            auth=(client_id, client_secret),
             data={
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "grant_type": "client_credentials"
+                "grant_type": "client_credentials",
+                "scope": "content"
             },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=10
         )
         r.raise_for_status()
@@ -919,7 +1064,7 @@ async def quran_token():
         expires_in = data.get("expires_in", 3600)
         _quran_token_expires = now + expires_in - 300
         
-        return {"access_token": _quran_token}
+        return {"access_token": _quran_token, "client_id": client_id}
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Quran.com token: {e}")
 
@@ -928,6 +1073,9 @@ async def quran_token():
 async def quran_surah(number: int, edition: str = Query("en.sahih"), reciter: str = Query("ar.alafasy")):
     if reciter not in RECITER_IDS:
         reciter = "ar.alafasy"
+    # Get the bitrate for this reciter
+    reciter_meta = next((r for r in RECITERS if r["id"] == reciter), None)
+    bitrate = reciter_meta["bitrate"] if reciter_meta else 128
     try:
         # Fetch arabic + translation
         ar = await asyncio.to_thread(fetch_alquran, f"/surah/{number}/quran-uthmani")
@@ -945,7 +1093,7 @@ async def quran_surah(number: int, edition: str = Query("en.sahih"), reciter: st
                 "globalNumber": a["number"],
                 "arabic": arabic_text,
                 "translation": t["text"],
-                "audio": f"https://cdn.islamic.network/quran/audio/128/{reciter}/{a['number']}.mp3",
+                "audio": f"https://cdn.islamic.network/quran/audio/{bitrate}/{reciter}/{a['number']}.mp3",
             })
         return {
             "number": ar_data["number"],
@@ -957,7 +1105,7 @@ async def quran_surah(number: int, edition: str = Query("en.sahih"), reciter: st
             "reciter": reciter,
             "edition": edition,
             "bismillah_audio": (
-                f"https://cdn.islamic.network/quran/audio/128/{reciter}/1.mp3"
+                f"https://cdn.islamic.network/quran/audio/{bitrate}/{reciter}/1.mp3"
                 if strip_bismillah else None
             ),
             "ayahs": ayahs,

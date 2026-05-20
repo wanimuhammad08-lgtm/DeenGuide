@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Sparkles, Send, Mic, MicOff, Loader2, BookOpen, ScrollText, Bookmark, BookmarkCheck, Volume2, VolumeX, Quote, Brain, Scale, FileSearch } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Sparkles, Send, Mic, MicOff, Loader2, BookOpen, ScrollText, Bookmark, BookmarkCheck, Volume2, VolumeX, Quote, Brain, Scale, FileSearch, ArrowLeft, Trash2 } from "lucide-react";
 import { ai } from "@/lib/api";
 import { useBookmarks } from "@/lib/bookmarks";
 import { useTTS } from "@/lib/tts";
@@ -59,8 +59,9 @@ const sampleQuestions = [
 ];
 
 export default function Ask() {
+  const navigate = useNavigate();
   const [question, setQuestion] = useState("");
-  const { history, loading, ask } = useAI();
+  const { history, loading, ask, clearHistory } = useAI();
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
   const endRef = useRef(null);
@@ -107,14 +108,28 @@ export default function Ask() {
 
   return (
     <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
-      <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI Assistant</p>
-        <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          Ask anything about Islam
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-          Answers are drawn from the Qur'an and authentic Hadith. Always verify with a knowledgeable scholar.
-        </p>
+      <div className="relative mb-6 flex items-start gap-4">
+        <button onClick={() => navigate(-1)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card mt-1">
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div className="flex-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI Assistant</p>
+          <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
+            Ask anything about Islam
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+            Answers are drawn from the Qur'an and authentic Hadith. Always verify with a knowledgeable scholar.
+          </p>
+        </div>
+        {history.length > 0 && (
+          <button
+            onClick={() => { clearHistory(); toast.success("Chat cleared"); }}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card mt-1 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
+            title="Clear chat"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Conversation */}
@@ -249,59 +264,57 @@ const AnswerCard = ({ data, index, toggle, isBookmarked, tts }) => {
 
         {/* Quran Evidence */}
         {data.quran_refs?.length > 0 && (
-          <div className="space-y-3 pt-4 border-t border-border/40">
+          <div className="space-y-2.5 pt-4 border-t border-border/40">
             <SectionLabel icon={BookOpen} label="Qur'an Evidence" />
-            {data.quran_refs.map((q, i) => (
-              <div key={i} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
-                <div className="px-4 py-2 bg-primary/8 border-b border-border/40 flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">
-                    Surah {q.surah_name} {q.surah}:{q.ayah}
-                  </span>
-                  <Link
-                    to={`/quran/${q.surah}#ayah=${q.ayah}`}
-                    className="text-[11px] font-semibold text-primary hover:underline"
-                  >
-                    Read in App ↗
-                  </Link>
-                </div>
-                <div className="p-4">
-                  <p dir="rtl" className="text-right font-arabic text-2xl leading-[2.2] text-foreground mb-3">{q.arabic}</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground italic">"{q.translation}"</p>
-                </div>
-              </div>
-            ))}
+            {data.quran_refs.map((q, i) => {
+              const isLong = (q.arabic || "").length > 80;
+              const arabicPreview = isLong ? q.arabic.slice(0, 70) + "..." : q.arabic;
+              const isTransLong = (q.translation || "").length > 120;
+              const transPreview = isTransLong ? q.translation.slice(0, 110).replace(/\s+\S*$/, "") + "..." : q.translation;
+              return (
+                <Link key={i} to={`/quran/${q.surah}#ayah=${q.ayah}`} className="block rounded-xl border border-border/50 bg-muted/10 p-3.5 transition-all hover:border-primary/30 hover:bg-accent/5" style={{ textDecoration: "none" }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
+                      Surah {q.surah_name} {q.surah}:{q.ayah}
+                    </span>
+                    <span className="text-[10px] font-semibold text-primary">
+                      Read in App ↗
+                    </span>
+                  </div>
+                  {q.arabic && (
+                    <p dir="rtl" className="text-right font-arabic text-lg leading-[2] text-foreground/85 mb-2">{arabicPreview}</p>
+                  )}
+                  <p className="text-[13px] leading-relaxed text-muted-foreground italic">"{transPreview}"</p>
+                </Link>
+              );
+            })}
           </div>
         )}
 
         {/* Hadith Evidence */}
         {data.hadith_refs?.length > 0 && (
-          <div className="space-y-3 pt-4 border-t border-border/40">
+          <div className="space-y-2.5 pt-4 border-t border-border/40">
             <SectionLabel icon={ScrollText} label="Hadith Evidence" />
             {data.hadith_refs.map((h, i) => {
-              const hid = `${index}-h-${i}`;
-              const speaking = tts?.speaking && tts?.activeId === hid;
-              const collLabel = collectionLabels[h.collection] || h.collection;
+              const collName = h.collection_name || collectionLabels[h.collection] || h.collection;
+              const isLong = (h.english || "").length > 150;
+              const englishPreview = isLong ? h.english.slice(0, 140).replace(/\s+\S*$/, "") + "..." : h.english;
+              const slug = normalizeCollection(h.collection);
+              const displayNum = h.standard_number || h.number;
               return (
-                <div key={i} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
-                  <div className="px-4 py-2 bg-primary/8 border-b border-border/40 flex flex-wrap items-center justify-between gap-2">
+                <Link key={i} to={`/hadith?book=${slug}&number=${h.number}`} className="block rounded-xl border border-border/50 bg-muted/10 p-3.5 transition-all hover:border-primary/30 hover:bg-accent/5" style={{ textDecoration: "none" }}>
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-foreground">{collLabel}</span>
-                      <span className="text-xs text-muted-foreground">#{h.standard_number || h.number}</span>
-                      {h.narrator && <span className="text-xs text-muted-foreground">· {h.narrator}</span>}
+                      <span className="text-[11px] font-bold text-foreground">{collName} {displayNum}</span>
+                      {h.narrator && <span className="text-[11px] text-muted-foreground">· {h.narrator}</span>}
                       <AuthenticityBadge level={h.authenticity} />
                     </div>
-                    <Link
-                      to={`/hadith?book=${normalizeCollection(h.collection)}&number=${h.number}&eng=${encodeURIComponent(h.english || "")}`}
-                      className="text-[11px] font-semibold text-primary hover:underline"
-                    >
-                      Read in App ↗
-                    </Link>
+                    <span className="text-[10px] font-semibold text-primary shrink-0">
+                      Read Full ↗
+                    </span>
                   </div>
-                  <div className="p-4">
-                    {h.arabic && <p dir="rtl" className="text-right font-arabic text-xl leading-[2.2] mb-3">{h.arabic}</p>}
-                    <p className="text-sm leading-relaxed text-muted-foreground">{h.english}</p>
-                  </div>
-                </div>
+                  <p className="text-[13px] leading-relaxed text-muted-foreground">{englishPreview}</p>
+                </Link>
               );
             })}
           </div>

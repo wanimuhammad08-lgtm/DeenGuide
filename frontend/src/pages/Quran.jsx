@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Search, ChevronDown, BookOpen,
-  Layers, Calendar, Star, Bookmark, BookmarkCheck, X
+  Layers, Calendar, Star, Bookmark, BookmarkCheck, X, ArrowLeft
 } from "lucide-react";
 import { quran } from "@/lib/api";
 import { useBookmarks } from "@/lib/bookmarks";
@@ -164,21 +164,26 @@ export default function Quran() {
     <div className="mx-auto max-w-3xl pb-24 px-4 sm:px-0">
       
       {/* Page Header (Matching Ask AI) */}
-      <div className="relative mb-6">
-        <button 
-          onClick={() => setShowSearch(v => !v)} 
-          className="absolute right-0 top-1 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showSearch ? <X className="h-6 w-6" /> : <Search className="h-6 w-6" />}
+      <div className="relative mb-6 flex items-start gap-4">
+        <button onClick={() => navigate(-1)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-card mt-1">
+          <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="pr-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">THE NOBLE QUR'AN</p>
-          <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-            {filteredSurahs.length} Surah{filteredSurahs.length !== 1 ? "s" : ""}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-            Beautiful Arabic, multiple translations, Tafsir Ibn Kathir, audio recitation, and bookmarks.
-          </p>
+        <div className="flex-1 relative">
+          <button 
+            onClick={() => setShowSearch(v => !v)} 
+            className="absolute right-0 top-1 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showSearch ? <X className="h-6 w-6" /> : <Search className="h-6 w-6" />}
+          </button>
+          <div className="pr-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">THE NOBLE QUR'AN</p>
+            <h1 className="mt-1 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
+              {filteredSurahs.length} Surah{filteredSurahs.length !== 1 ? "s" : ""}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+              Beautiful Arabic, multiple translations, Tafsir Ibn Kathir, audio recitation, and bookmarks.
+            </p>
+          </div>
         </div>
       </div>
 

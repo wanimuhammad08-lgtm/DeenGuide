@@ -268,17 +268,49 @@ export default function SurahReader() {
       const match = location.hash.match(/#ayah=(\d+)/);
       if (match) {
         const ayahNum = match[1];
-        setTimeout(() => {
+        // Try scrolling with retries since DOM may not be ready immediately
+        const tryScroll = (attempts = 0) => {
           const el = document.querySelector(`[data-ayah-row="${ayahNum}"]`);
           if (el) {
             el.scrollIntoView({ behavior: "smooth", block: "center" });
             el.classList.add('bg-primary/10', 'transition-colors', 'duration-1000');
-            setTimeout(() => el.classList.remove('bg-primary/10'), 2000);
+            setTimeout(() => el.classList.remove('bg-primary/10'), 3000);
+          } else if (attempts < 10) {
+            setTimeout(() => tryScroll(attempts + 1), 300);
           }
-        }, 150); // slight delay to ensure DOM is fully rendered
+        };
+        setTimeout(() => tryScroll(), 500);
       }
     }
   }, [data, location.hash]);
+
+  // Track last visible ayah for "Continue Reading" feature
+  useEffect(() => {
+    if (!data) return;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const ayahNum = entry.target.getAttribute('data-ayah-row');
+          if (ayahNum) {
+            try {
+              localStorage.setItem("deenguide:last-seen-surah", JSON.stringify({
+                number: data.number,
+                englishName: data.englishName,
+                name: data.name,
+                ayah: parseInt(ayahNum),
+                timestamp: Date.now(),
+              }));
+            } catch {}
+          }
+        }
+      }
+    }, { threshold: 0.5 });
+
+    // Observe all ayah rows
+    const rows = document.querySelectorAll('[data-ayah-row]');
+    rows.forEach(row => observer.observe(row));
+    return () => observer.disconnect();
+  }, [data]);
 
   // load surah when number / reciter / translation edition changes
   useEffect(() => {
@@ -739,6 +771,27 @@ export default function SurahReader() {
   };
 
   const playSingle = (idx) => {
+    if (currentIdxRef.current === idx && playing) {
+      setPlaying(false);
+      playingRef.current = false;
+      if (audioRef.current) audioRef.current.pause();
+      window.speechSynthesis.pause();
+      setActiveRowIcon(PLAY_ICON);
+    } else if (currentIdxRef.current === idx && !playing) {
+      setPlaying(true);
+      playingRef.current = true;
+      if (audioRef.current) audioRef.current.play().catch(() => {});
+      window.speechSynthesis.resume();
+      setActiveRowIcon(PAUSE_ICON);
+    } else {
+      stopPlayback();
+      bismillahPlayedRef.current = true;
+      singleModeRef.current = false;
+      playFromIndex(idx);
+    }
+  };
+
+  const playOnlyOne = (idx) => {
     if (currentIdxRef.current === idx && playing) {
       setPlaying(false);
       playingRef.current = false;
@@ -1287,7 +1340,6 @@ export default function SurahReader() {
                     key={a.number}
                     data-ayah-row={a.number}
                     className="pb-4 border-b border-border/30 last:border-0 transition-colors"
-                    style={{ contentVisibility: 'auto', containIntrinsicSize: '1px 200px' }}
                   >
                     {/* Verse Header Controls */}
                     <div className="flex items-center justify-between mb-2">
@@ -1419,11 +1471,21 @@ export default function SurahReader() {
                 <div key={pageNum}>
                   {readingView === "arabic" ? (
                     <div dir="rtl" className={`font-arabic leading-[1.9] text-foreground max-w-4xl mx-auto transition-all duration-300 ${data.number === 1 ? 'text-center' : 'text-justify'}`} style={{ textJustify: data.number === 1 ? 'none' : 'inter-word', fontSize: getArabicFontSize() }}>
-                      {pageAyahs.map(a => (
-                        <span key={a.number} data-ayah-row={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
-                          <span dangerouslySetInnerHTML={{ __html: arabicScript === 'tajweed' ? a.tajweed : (arabicScript === 'indopak' ? a.indopak : a.arabic) }} /> <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>{" "}
-                        </span>
-                      ))}
+                      {pageAyahs.map(a => {
+                        const scriptText = arabicScript === 'tajweed' ? a.tajweed : (arabicScript === 'indopak' ? a.indopak : a.arabic);
+                        // Strip verse-end markers from all script types
+                        const cleanText = (scriptText || '')
+                          .replace(/<span[^>]*class=end[^>]*>[^<]*<\/span>/gi, '')  // <span class=end>١</span>
+                          .replace(/<span[^>]*class="end"[^>]*>[^<]*<\/span>/gi, '')  // <span class="end">١</span>
+                          .replace(/<span[^>]*class='end'[^>]*>[^<]*<\/span>/gi, '')  // <span class='end'>١</span>
+                          .replace(/\u06DD[\u0660-\u0669]+/g, '')  // ۝١٢٣ format
+                          .replace(/\s+$/, '');
+                        return (
+                          <span key={a.number} data-ayah-row={a.number} className={data.number === 1 && a.number === 1 ? "block mb-6 text-center" : "inline"}>
+                            <span dangerouslySetInnerHTML={{ __html: cleanText }} /> <span className="inline-block relative text-primary mx-1" style={{ fontSize: `max(16px, calc(${getArabicFontSize()} * 0.6))` }}>﴾{a.number}﴿</span>{" "}
+                          </span>
+                        );
+                      })}
                     </div>
                   ) : (
                     (() => {
@@ -1493,7 +1555,7 @@ export default function SurahReader() {
         ayahData={data?.ayahs.find(a => a.number === tafsirPanelAyahNum)}
         onPlayAyah={(num) => {
           const idx = data?.ayahs.findIndex(a => a.number === num);
-          if (idx !== -1) playSingle(idx);
+          if (idx !== -1) playOnlyOne(idx);
         }}
         onBookmarkAyah={(num) => {
           const bkId = `${data.number}:${num}`;

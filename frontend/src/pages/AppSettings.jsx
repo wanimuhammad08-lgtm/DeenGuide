@@ -1,6 +1,5 @@
-import { ArrowLeft, Moon, Sun, Type, Monitor } from "lucide-react";
+import { ArrowLeft, Monitor } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AppSettings() {
   return (
@@ -16,22 +15,6 @@ export default function AppSettings() {
       </div>
 
       <div className="space-y-6">
-        {/* Theme */}
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent">
-                <Moon className="h-5 w-5 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Appearance</p>
-                <p className="text-xs text-muted-foreground">Toggle dark/light mode</p>
-              </div>
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-
         {/* About */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-3">

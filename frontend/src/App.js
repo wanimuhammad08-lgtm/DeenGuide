@@ -5,6 +5,12 @@ import { toast } from "sonner";
 import { Layout } from "@/components/Layout";
 import { AIProvider } from "@/context/AIContext";
 import { AuthProvider } from "@/context/AuthContext";
+
+// Force light mode — remove any stored dark preference
+if (typeof window !== "undefined") {
+  document.documentElement.classList.remove("dark");
+  localStorage.removeItem("deenguide-theme");
+}
 import Home from "@/pages/Home";
 import Ask from "@/pages/Ask";
 import Quran from "@/pages/Quran";
@@ -40,46 +46,66 @@ function ServerWakeup() {
     // On localhost the server is always running — skip the wakeup ping
     if (isLocalhost) return;
 
+    // Check if server was recently confirmed alive (within 14 minutes)
+    const lastAlive = parseInt(sessionStorage.getItem("dg_server_alive") || "0");
+    if (Date.now() - lastAlive < 14 * 60 * 1000) return; // Server was alive recently
+
     let timer;
     let done = false;
 
-    // Show "waking up" toast if Render cold-start takes >4 seconds
+    // Only show toast after 8 seconds (most requests finish faster)
     timer = setTimeout(() => {
       if (!done) {
         toastId.current = "server-wake";
         toast.loading(
-          "🕌 Server is waking up… First visit takes ~30 seconds.",
+          "Loading content… Please wait a moment.",
           { duration: Infinity, id: "server-wake" }
         );
       }
-    }, 4000);
+    }, 8000);
 
-    // Ping /api/health immediately to wake the Render dyno
-    fetch(`${BACKEND_URL}/api/health`, { method: "GET" })
-      .then(() => {
-        done = true;
-        clearTimeout(timer);
-        if (toastId.current) {
-          toast.success("✅ Connected! Loading your content.", {
-            id: "server-wake",
-            duration: 2000,
-          });
-          toastId.current = null;
-        }
-      })
-      .catch(() => {
-        done = true;
-        clearTimeout(timer);
-        if (toastId.current) {
-          toast.error("⚠️ Server offline. Some features may not load.", {
-            id: "server-wake",
-            duration: 5000,
-          });
-          toastId.current = null;
-        }
-      });
+    // Ping /api/ to wake the server — with retry
+    const ping = (attempt = 0) => {
+      fetch(`${BACKEND_URL}/api/`, { method: "GET" })
+        .then((r) => {
+          if (r.ok) {
+            done = true;
+            clearTimeout(timer);
+            sessionStorage.setItem("dg_server_alive", String(Date.now()));
+            if (toastId.current) {
+              toast.success("Connected!", { id: "server-wake", duration: 1500 });
+              toastId.current = null;
+            }
+          } else if (attempt < 2) {
+            setTimeout(() => ping(attempt + 1), 5000);
+          }
+        })
+        .catch(() => {
+          if (attempt < 2) {
+            setTimeout(() => ping(attempt + 1), 5000);
+          } else {
+            done = true;
+            clearTimeout(timer);
+            if (toastId.current) {
+              toast.error("Server is starting up. Content will load shortly.", {
+                id: "server-wake",
+                duration: 5000,
+              });
+              toastId.current = null;
+            }
+          }
+        });
+    };
+    ping();
 
-    return () => clearTimeout(timer);
+    // Keep-alive: ping every 14 minutes to prevent Render from sleeping
+    const keepAlive = setInterval(() => {
+      fetch(`${BACKEND_URL}/api/`, { method: "GET" })
+        .then(() => sessionStorage.setItem("dg_server_alive", String(Date.now())))
+        .catch(() => {});
+    }, 14 * 60 * 1000);
+
+    return () => { clearTimeout(timer); clearInterval(keepAlive); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

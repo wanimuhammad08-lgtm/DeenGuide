@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Search, X, Loader2, LocateFixed, MessageSquareText, BookOpen, ScrollText, MapPinned, Compass } from "lucide-react";
+import { MapPin, Search, X, Loader2, LocateFixed, MessageSquareText, BookOpen, ScrollText, MapPinned, Moon, Sunset, Star, Sunrise, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { calculatePrayerTimes, getCurrentPrayer } from "@/lib/prayerTimes";
 import { gregorianToHijri, fetchTodayHijri, HIJRI_MONTHS } from "@/lib/hijriDate";
@@ -109,13 +109,26 @@ const MosqueIcon = () => (
   </svg>
 );
 
+// Custom icons for Tasbih and 99 Names
+const TasbihBeadsIcon = ({ size = 20, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="7" stroke={color} strokeWidth="1.5" strokeDasharray="2.5 2.5" />
+    <circle cx="12" cy="12" r="3" stroke={color} strokeWidth="1.5" strokeDasharray="1.5 1.5" />
+  </svg>
+);
+const AllahNameIcon = ({ size = 20, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <text x="12" y="17" textAnchor="middle" fontFamily="'Amiri','serif'" fontSize="14" fill={color} fontWeight="bold">الله</text>
+  </svg>
+);
+
 const EXPLORE_ITEMS = [
   { to: "/ask", label: "Ask AI", Icon: MessageSquareText, color: "#F0F9FF", gradient: "linear-gradient(135deg, #38BDF8, #0284C7)" },
   { to: "/quran", label: "Quran", Icon: BookOpen, color: "#ECFDF5", gradient: "linear-gradient(135deg, #34D399, #059669)" },
   { to: "/hadith", label: "Hadith", Icon: ScrollText, color: "#FFF7ED", gradient: "linear-gradient(135deg, #FDBA74, #EA580C)" },
   { to: "https://www.google.com/maps/search/?api=1&query=mosques+near+me", label: "Mosques", Icon: MapPinned, color: "#FDF2F8", gradient: "linear-gradient(135deg, #F472B6, #DB2777)" },
-  { to: "/more/tasbih", label: "Tasbih", Icon: TasbihIcon, color: "#FFFBEB", gradient: "linear-gradient(135deg, #FCD34D, #D97706)" },
-  { to: "/more/names-of-allah", label: "99 Names", Icon: AllahIcon, color: "#FFF1F2", gradient: "linear-gradient(135deg, #FB7185, #880E4F)" },
+  { to: "/more/tasbih", label: "Tasbih", Icon: TasbihBeadsIcon, color: "#FFFBEB", gradient: "linear-gradient(135deg, #FCD34D, #D97706)" },
+  { to: "/more/names-of-allah", label: "99 Names", Icon: AllahNameIcon, color: "#FFF1F2", gradient: "linear-gradient(135deg, #FB7185, #BE123C)" },
 ];
 
 function getTimezone() { return -new Date().getTimezoneOffset() / 60; }
@@ -163,17 +176,8 @@ function ShareSection() {
     <div style={{ background:"#F5F0E8", borderRadius:16, padding:"16px", border:"1px solid #EDE8E0", position:"relative" }}>
       <p style={{ fontSize:11, color:"#6B7280", fontWeight:600, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.08em" }}>Share DeenGuide</p>
 
-      {/* Decorative circles */}
-      <div style={{ position:"absolute", top:12, right:14, display:"flex", gap:4 }}>
-        {["#D4943A","#BF8040","#8BAE8A"].map((c,i)=>(
-          <div key={i} style={{ width:28, height:28, borderRadius:"50%", background:c, opacity:0.55, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ color:"#fff", fontSize:12 }}>✓</span>
-          </div>
-        ))}
-      </div>
-
-      <p style={{ fontSize:15, color:"#1B4D3E", fontWeight:700, lineHeight:1.5, maxWidth:"80%", marginBottom:12 }}>
-        DeenGuide is a free Islamic app. Share it with your friends and family to earn hasanah and benefit the whole ummah.
+      <p style={{ fontSize:15, color:"#1B4D3E", fontWeight:700, lineHeight:1.5, marginBottom:12 }}>
+        DeenGuide is a free Islamic app. Share it with your friends and family to earn hasanah.
       </p>
 
       {/* Hadith card */}
@@ -182,7 +186,7 @@ function ShareSection() {
         <p style={{ fontSize:13, color:"#374151", lineHeight:1.65, margin:0 }}>
           The Prophet ﷺ said: <em>'Whoever guides someone to goodness will have a reward like the one who did it.'</em>
         </p>
-        <p style={{ fontSize:11, color:"#9CA3AF", marginTop:6 }}>Sahih Muslim, Book 20, Hadith 4665</p>
+        <p style={{ fontSize:11, color:"#9CA3AF", marginTop:6 }}>Sahih Muslim 4665</p>
       </div>
 
 
@@ -215,6 +219,9 @@ export default function Home() {
   const [locationName, setLocationName] = useState(() => localStorage.getItem("dg_location_name") || "Locating...");
   const [now, setNow] = useState(Date.now());
   const [countdown, setCountdown] = useState("00:00:00");
+  const [lastSeen, setLastSeen] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("deenguide:last-seen-surah")); } catch { return null; }
+  });
   const [hijriToday, setHijriToday] = useState(() => {
     const d = new Date();
     return gregorianToHijri(d.getFullYear(), d.getMonth()+1, d.getDate());
@@ -616,6 +623,35 @@ export default function Home() {
           </div>
         </Link>
 
+        {/* Continue Reading */}
+        {lastSeen && lastSeen.number && (
+          <Link to={`/quran/${lastSeen.number}#ayah=${lastSeen.ayah || 1}`} style={{ textDecoration: "none", display: "block" }}>
+            <div style={{
+              background:"linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)", borderRadius:16, padding:"14px 16px",
+              border:"1px solid #A7F3D0",
+              transition: "transform 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p style={{ fontSize:11, color:"#059669", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:4 }}>Continue Reading</p>
+                  <p style={{ fontSize:15, color:"#1B4D3E", fontWeight:700 }}>
+                    Surah {lastSeen.englishName}
+                  </p>
+                  <p style={{ fontSize:12, color:"#6B7280", marginTop:2 }}>
+                    Ayah {lastSeen.ayah || 1} · Tap to resume
+                  </p>
+                </div>
+                <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg, #34D399, #059669)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <BookOpen size={20} color="white" />
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
+
         {/* Explore */}
         <div>
           <p style={{ fontSize:13, color:"#6B7280", fontWeight:600, marginBottom:10 }}>Explore</p>
@@ -627,13 +663,12 @@ export default function Home() {
                   <div style={{ fontSize: 13, color: "#374151", fontWeight: 700, lineHeight: 1.3 }}>{item.label}</div>
                   <div style={{
                     position: "absolute", bottom: 10, right: 10,
-                    width: 42, height: 42, borderRadius: "50%",
+                    width: 40, height: 40, borderRadius: 12,
                     background: item.gradient,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                    border: "2px solid rgba(255,255,255,0.8)"
                   }}>
-                    <item.Icon size={20} color="white" style={{ strokeWidth: 2.5 }} />
+                    <item.Icon size={20} color="white" style={{ strokeWidth: 2 }} />
                   </div>
                 </>
               );
@@ -717,12 +752,14 @@ export default function Home() {
         {/* Suhur / Iftar / Tahajjud */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
           {[
-            { icon:"🌙", label:"Suhur End", time: suhurEnd },
-            { icon:"🌅", label:"Iftar", time: iftar },
-            { icon:"🌃", label:"Tahajjud", time: tahajjudTime },
+            { Icon: Moon, label:"Suhur End", time: suhurEnd, gradient:"linear-gradient(135deg, #1e1b4b, #312e81)" },
+            { Icon: Sunset, label:"Iftar", time: iftar, gradient:"linear-gradient(135deg, #EA580C, #DC2626)" },
+            { Icon: Star, label:"Tahajjud", time: tahajjudTime, gradient:"linear-gradient(135deg, #1e3a5f, #0f172a)" },
           ].map((item) => (
             <div key={item.label} style={{ background:"#fff", borderRadius:14, padding:"12px 10px", border:"1px solid #EDE8E0", textAlign:"center" }}>
-              <div style={{ fontSize:18, marginBottom:4 }}>{item.icon}</div>
+              <div style={{ width:36, height:36, borderRadius:10, background:item.gradient, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:6 }}>
+                <item.Icon size={18} color="white" />
+              </div>
               <div style={{ fontSize:11, color:"#6B7280", fontWeight:500 }}>{item.label}</div>
               <div style={{ fontSize:13, color:"#1B4D3E", fontWeight:700, marginTop:2 }}>{item.time}</div>
             </div>
@@ -740,17 +777,19 @@ export default function Home() {
             >ⓘ</button>
           </div>
           {[
-            { bg:"linear-gradient(135deg,#4A1942,#C0392B)", icon:"🌄", label:"Sunrise", start: sunriseStart, end: sunriseEnd },
-            { bg:"linear-gradient(135deg,#1A3A5C,#2B6CB0)", icon:"☀️", label:"Noon", start: noonStart, end: noonEnd },
-            { bg:"linear-gradient(135deg,#7B2D00,#E8623A)", icon:"🌇", label:"Sunset", start: sunsetStart, end: sunsetEnd },
+            { bg:"linear-gradient(135deg,#4A1942,#C0392B)", Icon: Sunrise, label:"Sunrise", start: sunriseStart, end: sunriseEnd },
+            { bg:"linear-gradient(135deg,#1A3A5C,#2B6CB0)", Icon: Sun, label:"Noon", start: noonStart, end: noonEnd },
+            { bg:"linear-gradient(135deg,#7B2D00,#E8623A)", Icon: Sunset, label:"Sunset", start: sunsetStart, end: sunsetEnd },
           ].map((item) => (
             <div key={item.label} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", borderTop:"1px solid #F3F4F6" }}>
               <div style={{
-                width:52, height:40, borderRadius:10,
+                width:44, height:44, borderRadius:12,
                 background:item.bg,
                 display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:18, flexShrink:0
-              }}>{item.icon}</div>
+                flexShrink:0
+              }}>
+                <item.Icon size={20} color="white" />
+              </div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:13, color:"#374151", fontWeight:600 }}>{item.label}</div>
                 <div style={{ fontSize:12, color:"#6B7280", marginTop:2 }}>{item.start} – {item.end}</div>
@@ -765,14 +804,15 @@ export default function Home() {
         {/* Daily Verse */}
         <Link to={DAILY_VERSES[verseIdx].link} style={{ textDecoration: "none", display: "block" }}>
           <div style={{
-            background:"#fff", borderRadius:16, padding:"16px", border:"1px solid #EDE8E0",
+            background:"#fff", borderRadius:16, padding:"16px 16px 16px 20px", border:"1px solid #EDE8E0",
+            borderLeft:"3px solid #1B4D3E",
             boxShadow: "0 1px 4px rgba(0,0,0,0.02)", transition: "transform 0.2s"
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
           onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
           >
-            <p style={{ fontSize:12, color:"#6B7280", fontWeight:600, marginBottom:8 }}>Daily Verse</p>
-            <p style={{ fontSize:15, color:"#1F2937", lineHeight:1.7 }}>"{DAILY_VERSES[verseIdx].text}"</p>
+            <p style={{ fontSize:11, color:"#1B4D3E", fontWeight:700, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em" }}>📖 Daily Verse</p>
+            <p style={{ fontSize:15, color:"#1F2937", lineHeight:1.7, fontStyle:"italic" }}>"{DAILY_VERSES[verseIdx].text}"</p>
             <p style={{ fontSize:12, color:"#6B7280", marginTop:8, fontWeight:500 }}>{DAILY_VERSES[verseIdx].ref}</p>
           </div>
         </Link>
@@ -780,13 +820,14 @@ export default function Home() {
         {/* Daily Dua */}
         <Link to={DAILY_DUAS[duaIdx].link} style={{ textDecoration: "none", display: "block" }}>
           <div style={{
-            background:"#fff", borderRadius:16, padding:"16px", border:"1px solid #EDE8E0",
+            background:"#fff", borderRadius:16, padding:"16px 16px 16px 20px", border:"1px solid #EDE8E0",
+            borderLeft:"3px solid #D97706",
             boxShadow: "0 1px 4px rgba(0,0,0,0.02)", transition: "transform 0.2s"
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
           onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
           >
-            <p style={{ fontSize:12, color:"#6B7280", fontWeight:600, marginBottom:8 }}>Daily Dua</p>
+            <p style={{ fontSize:11, color:"#D97706", fontWeight:700, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em" }}>🤲 Daily Dua</p>
             <p style={{ fontSize:15, color:"#1F2937", lineHeight:1.7 }}>{DAILY_DUAS[duaIdx].text}</p>
             <p style={{ fontSize:12, color:"#6B7280", marginTop:8, fontWeight:500 }}>{DAILY_DUAS[duaIdx].ref}</p>
           </div>

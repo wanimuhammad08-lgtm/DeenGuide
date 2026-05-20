@@ -411,7 +411,7 @@ export default function Hadith() {
         {view.loading ? (
           <Spinner />
         ) : view.hadith ? (
-          <HadithCard h={view.hadith} toggle={toggle} isBookmarked={isBookmarked} />
+          <HadithCard h={view.hadith} toggle={toggle} isBookmarked={isBookmarked} autoExpand={true} />
         ) : (
           <Empty>Hadith could not be loaded.</Empty>
         )}
@@ -478,9 +478,9 @@ const CollectionCard = ({ book, onOpen, testid }) => {
   );
 };
 
-const HadithCard = ({ h, toggle, isBookmarked }) => {
+const HadithCard = ({ h, toggle, isBookmarked, autoExpand = false }) => {
   const saved = isBookmarked("hadiths", h.id);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(autoExpand);
 
   return (
     <article data-testid={`hadith-${h.id}`} className="rounded-2xl border border-border bg-card p-5 sm:p-6">

@@ -9,8 +9,8 @@ const sections = [
   {
     title: "Spiritual Tools",
     items: [
-      { to: "/more/calendar", label: "Islamic Calendar", desc: "Hijri dates & events", icon: Calendar, color: "bg-red-500" },
       { to: "/more/qibla", label: "Qibla Finder", desc: "Locate the Ka'bah", icon: Compass, color: "bg-violet-500" },
+      { to: "/more/calendar", label: "Islamic Calendar", desc: "Hijri dates & events", icon: Calendar, color: "bg-red-500" },
       { to: "/more/date-converter", label: "Date Converter", desc: "Hijri ↔ Gregorian", icon: ArrowLeftRight, color: "bg-cyan-500" },
       { to: "/more/zakat", label: "Zakat Calculator", desc: "Calculate your Zakat", icon: Calculator, color: "bg-green-600" },
     ],

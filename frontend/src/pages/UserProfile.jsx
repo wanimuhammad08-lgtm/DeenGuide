@@ -30,49 +30,93 @@ export default function UserProfile() {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) { toast.error("Please fill in all fields"); return; }
+    if (!email.includes("@")) { toast.error("Please enter a valid email address"); return; }
     
     setIsSubmitting(true);
-    const { data, error } = await signIn(email, password);
-    setIsSubmitting(false);
-    
-    if (error) {
-      if (error.status === 429 || error.message.includes("body stream already read")) {
-        toast.error("Too many login attempts. Please wait a minute and try again.");
-      } else {
-        toast.error(error.message || "Sign in failed. Please check your credentials.");
+    try {
+      const { data, error } = await signIn(email, password);
+      setIsSubmitting(false);
+      
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+        const status = error.status || error?.code || 0;
+        console.log("[Auth] Login error:", status, error.message);
+        
+        if (msg.includes("invalid login credentials") || msg.includes("invalid_credentials") || msg.includes("invalid credentials")) {
+          toast.error("Incorrect email or password. Please try again.");
+        } else if (msg.includes("email not confirmed")) {
+          toast.error("Please verify your email before signing in. Check your inbox.");
+        } else if (msg.includes("user not found") || msg.includes("no user found")) {
+          toast.error("No account found with this email. Please register first.");
+        } else if (status === 429) {
+          toast.error("Too many attempts. Please wait a minute and try again.");
+        } else if (msg.includes("network") || msg.includes("fetch")) {
+          toast.error("Network error. Please check your internet connection.");
+        } else {
+          toast.error("Incorrect email or password. Please try again.");
+        }
+        return;
       }
-      return;
-    }
-    
-    toast.success("Welcome back!");
-    if (data?.user?.id) {
-        syncBookmarks(data.user.id);
+      
+      toast.success("Welcome back!");
+      if (data?.user?.id) {
+          syncBookmarks(data.user.id);
+      }
+    } catch (err) {
+      setIsSubmitting(false);
+      console.log("[Auth] Login exception:", err);
+      toast.error("Something went wrong. Please check your connection and try again.");
     }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!email || !password) { toast.error("Please fill in all fields"); return; }
+    if (!email.includes("@")) { toast.error("Please enter a valid email address"); return; }
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     
     setIsSubmitting(true);
-    const { data, error } = await signUp(email, password);
-    setIsSubmitting(false);
+    try {
+      const { data, error } = await signUp(email, password);
+      setIsSubmitting(false);
 
-    if (error) {
-      // Handle Supabase's internal double-read error on 429s
-      if (error.status === 429 || error.message.includes("body stream already read")) {
-        toast.error("Too many registration attempts. Please wait a minute and try again.");
-      } else if (error.message.includes("User already registered")) {
-        toast.error("An account with this email already exists. Please sign in.");
-      } else {
-        toast.error(error.message || "Registration failed. Please try again.");
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+        const status = error.status || 0;
+        console.log("[Auth] Register error:", status, error.message);
+        
+        if (msg.includes("already registered") || msg.includes("already been registered") || msg.includes("user_already_exists") || msg.includes("already exists")) {
+          toast.error("An account with this email already exists. Please sign in instead.");
+        } else if (msg.includes("invalid email") || msg.includes("unable to validate")) {
+          toast.error("Please enter a valid email address.");
+        } else if (msg.includes("password") && (msg.includes("weak") || msg.includes("short"))) {
+          toast.error("Password is too weak. Use at least 6 characters.");
+        } else if (msg.includes("signup_disabled") || msg.includes("signups not allowed")) {
+          toast.error("Registration is currently disabled. Please try again later.");
+        } else if (status === 429 || msg.includes("rate limit")) {
+          toast.error("Email rate limit reached. Please wait a few minutes before trying again.");
+        } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("body stream")) {
+          toast.error("Network error. Please check your connection and try again.");
+        } else {
+          toast.error(error.message || "Registration failed. Please try again.");
+        }
+        return;
       }
-      return;
-    }
-    toast.success("Account created successfully!");
-    if (data?.user?.id) {
-        syncBookmarks(data.user.id);
+      
+      // Supabase may return user without error but with identities=[] meaning user exists
+      if (data?.user && data.user.identities && data.user.identities.length === 0) {
+        toast.error("An account with this email already exists. Please sign in instead.");
+        return;
+      }
+      
+      toast.success("Account created! Check your email to verify.");
+      if (data?.user?.id) {
+          syncBookmarks(data.user.id);
+      }
+    } catch (err) {
+      setIsSubmitting(false);
+      console.log("[Auth] Register exception:", err);
+      toast.error("Something went wrong. Please check your connection and try again.");
     }
   };
 

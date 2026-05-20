@@ -33,13 +33,21 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signIn = async (email, password) => {
-    const result = await supabase.auth.signInWithPassword({ email, password });
-    return result;
+    try {
+      const result = await supabase.auth.signInWithPassword({ email, password });
+      return result;
+    } catch (err) {
+      return { data: null, error: { message: "Network error. Please check your connection.", status: 0 } };
+    }
   };
 
   const signUp = async (email, password) => {
-    const result = await supabase.auth.signUp({ email, password });
-    return result;
+    try {
+      const result = await supabase.auth.signUp({ email, password });
+      return result;
+    } catch (err) {
+      return { data: null, error: { message: "Network error. Please check your connection.", status: 0 } };
+    }
   };
 
   const value = {

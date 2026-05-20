@@ -1,59 +1,35 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, MapPin, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, MapPin, Search, X, Moon, Sunset, Star, Sunrise, Sun } from "lucide-react";
 import { calculatePrayerTimes, getCurrentPrayer, CALC_METHODS, JURISTIC_METHODS } from "@/lib/prayerTimes";
 import { gregorianToHijri, fetchTodayHijri, HIJRI_MONTHS } from "@/lib/hijriDate";
 
-// Prayer icons as SVG components
-const PrayerIcon = ({ type, className = "h-6 w-6" }) => {
-  const icons = {
-    fajr: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <path d="M12 3v2M5.64 5.64l1.41 1.41M3 12h2M5.64 18.36l1.41-1.41M12 19v2" strokeLinecap="round" />
-        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-        <path d="M4 20h16" strokeLinecap="round" />
-      </svg>
-    ),
-    sunrise: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <path d="M12 2v4M4.93 10.93l1.41 1.41M2 18h2M20 18h2M18.66 10.93l-1.41 1.41" strokeLinecap="round" />
-        <path d="M12 18a6 6 0 010-12" />
-        <path d="M2 22h20" strokeLinecap="round" />
-      </svg>
-    ),
-    dhuhr: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeLinecap="round" />
-      </svg>
-    ),
-    asr: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <circle cx="10" cy="12" r="4" />
-        <path d="M10 4v2M2.93 6.93l1.41 1.41M0 14h2M2.93 19.07l1.41-1.41M18 14h2" strokeLinecap="round" />
-        <path d="M22 20L14 20" strokeLinecap="round" opacity="0.5" />
-      </svg>
-    ),
-    maghrib: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <path d="M12 19a7 7 0 010-14" />
-        <path d="M2 21h20" strokeLinecap="round" />
-        <path d="M12 2v3M4.22 4.22l2.12 2.12M2 12h3" strokeLinecap="round" />
-      </svg>
-    ),
-    isha: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
-      </svg>
-    ),
-    qiyam: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-        <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" />
-      </svg>
-    ),
-  };
-  return icons[type] || icons.dhuhr;
+// Prayer icon badges — rounded square with gradient background and lucide icon
+import { Moon as MoonIcon, Sun as SunIcon, Sunrise as SunriseIcon, Sunset as SunsetIcon, CloudSun, SunMedium, Star as StarIcon } from "lucide-react";
+
+const PRAYER_ICON_CONFIG = {
+  fajr: { Icon: SunriseIcon, gradient: "linear-gradient(135deg, #1e1b4b, #312e81)" },
+  sunrise: { Icon: CloudSun, gradient: "linear-gradient(135deg, #EA580C, #DC2626)" },
+  dhuhr: { Icon: SunIcon, gradient: "linear-gradient(135deg, #D97706, #EA580C)" },
+  asr: { Icon: SunMedium, gradient: "linear-gradient(135deg, #B45309, #D97706)" },
+  maghrib: { Icon: SunsetIcon, gradient: "linear-gradient(135deg, #7B2D00, #E8623A)" },
+  isha: { Icon: MoonIcon, gradient: "linear-gradient(135deg, #1e1b4b, #312e81)" },
+  qiyam: { Icon: StarIcon, gradient: "linear-gradient(135deg, #0f172a, #1e3a5f)" },
+};
+
+const PrayerIconBadge = ({ type }) => {
+  const config = PRAYER_ICON_CONFIG[type] || PRAYER_ICON_CONFIG.dhuhr;
+  const IconComp = config.Icon;
+  return (
+    <div style={{
+      width: 36, height: 36, borderRadius: 10,
+      background: config.gradient,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0,
+    }}>
+      <IconComp size={18} color="white" strokeWidth={1.8} />
+    </div>
+  );
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -549,9 +525,7 @@ export default function PrayerTimes() {
                     isCurrent ? "bg-primary/10" : ""
                   }`}
                 >
-                  <div className={`shrink-0 ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>
-                    <PrayerIcon type={key} className="h-6 w-6" />
-                  </div>
+                  <PrayerIconBadge type={key} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className={`font-heading text-[15px] font-semibold ${isCurrent ? "text-primary" : "text-foreground"}`}>
@@ -594,12 +568,14 @@ export default function PrayerTimes() {
           {/* Suhur / Iftar / Tahajjud */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
             {[
-              { icon:"🌙", label:"Suhur End", time: suhurEnd },
-              { icon:"🌅", label:"Iftar", time: iftar },
-              { icon:"🌃", label:"Tahajjud", time: tahajjudTime },
+              { Icon: Moon, label:"Suhur End", time: suhurEnd, gradient:"linear-gradient(135deg, #1e1b4b, #312e81)" },
+              { Icon: Sunset, label:"Iftar", time: iftar, gradient:"linear-gradient(135deg, #EA580C, #DC2626)" },
+              { Icon: Star, label:"Tahajjud", time: tahajjudTime, gradient:"linear-gradient(135deg, #1e3a5f, #0f172a)" },
             ].map((item) => (
               <div key={item.label} style={{ background:"var(--card)", borderRadius:14, padding:"12px 10px", border:"1px solid var(--border)", textAlign:"center" }}>
-                <div style={{ fontSize:18, marginBottom:4 }}>{item.icon}</div>
+                <div style={{ width:36, height:36, borderRadius:10, background:item.gradient, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:6 }}>
+                  <item.Icon size={18} color="white" />
+                </div>
                 <div style={{ fontSize:11, color:"var(--muted-foreground)", fontWeight:500 }}>{item.label}</div>
                 <div style={{ fontSize:13, color:"var(--foreground)", fontWeight:700, marginTop:2 }}>{item.time}</div>
               </div>
@@ -616,17 +592,19 @@ export default function PrayerTimes() {
               >ⓘ</button>
             </div>
             {[
-              { bg:"linear-gradient(135deg,#4A1942,#C0392B)", icon:"🌄", label:"Sunrise", start: sunriseStart, end: sunriseEnd },
-              { bg:"linear-gradient(135deg,#1A3A5C,#2B6CB0)", icon:"☀️", label:"Noon", start: noonStart, end: noonEnd },
-              { bg:"linear-gradient(135deg,#7B2D00,#E8623A)", icon:"🌇", label:"Sunset", start: sunsetStart, end: sunsetEnd },
+              { bg:"linear-gradient(135deg,#4A1942,#C0392B)", Icon: Sunrise, label:"Sunrise", start: sunriseStart, end: sunriseEnd },
+              { bg:"linear-gradient(135deg,#1A3A5C,#2B6CB0)", Icon: Sun, label:"Noon", start: noonStart, end: noonEnd },
+              { bg:"linear-gradient(135deg,#7B2D00,#E8623A)", Icon: Sunset, label:"Sunset", start: sunsetStart, end: sunsetEnd },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-3 px-4 py-2.5 border-t border-border/50">
                 <div style={{
-                  width:52, height:40, borderRadius:10,
+                  width:44, height:44, borderRadius:12,
                   background:item.bg,
                   display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:18, flexShrink:0
-                }}>{item.icon}</div>
+                  flexShrink:0
+                }}>
+                  <item.Icon size={20} color="white" />
+                </div>
                 <div className="flex-1">
                   <div className="text-[13px] font-semibold text-foreground">{item.label}</div>
                   <div className="text-[12px] text-muted-foreground mt-0.5">{item.start} – {item.end}</div>
