@@ -158,10 +158,10 @@ function ShareSection() {
     const count = shareCount + 1;
     setShareCount(count);
     localStorage.setItem("dg_share_count", String(count));
-    const text = "🕌 DeenGuide — A free Islamic app with Quran, Prayer Times, Duas, Qibla, AI guidance and more.\n\nJoin thousands growing in deen. Download now: https://deenguide.app";
+    const text = "🕌 DeenGuide — A free Islamic app with Quran, Prayer Times, Duas, Qibla, AI guidance and more.\n\nJoin thousands growing in deen. Try now: https://deenguide-seven.vercel.app";
     try {
       if (navigator.share) {
-        await navigator.share({ title: "DeenGuide", text, url: "https://deenguide.app" });
+        await navigator.share({ title: "DeenGuide", text, url: "https://deenguide-seven.vercel.app" });
       } else {
         await navigator.clipboard.writeText(text);
         alert("Link copied! Share it with your friends.");
