@@ -79,25 +79,23 @@ else:
 def _call_gemini(prompt: str) -> str:
     """Call Gemini and return the raw text response."""
     response = _gemini_client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="models/gemini-2.0-flash",
         contents=prompt,
         config={
             "temperature": 0.2,
             "max_output_tokens": 3000,
-            "response_mime_type": "application/json",
         },
     )
     return response.text
 
 def _call_gemini_fallback(prompt: str) -> str:
-    """Call Gemini 1.5 Flash as secondary fallback."""
+    """Call Gemini 2.5 Flash as secondary fallback."""
     response = _gemini_client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="models/gemini-2.5-flash",
         contents=prompt,
         config={
             "temperature": 0.2,
             "max_output_tokens": 3000,
-            "response_mime_type": "application/json",
         },
     )
     return response.text
@@ -711,16 +709,24 @@ Respond ONLY with the JSON object as instructed. No markdown fences."""
 
     # Parse JSON response
     cleaned = response_text.strip()
-    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-    cleaned = re.sub(r"\s*```$", "", cleaned)
+    # Remove markdown code fences
+    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned)
+    cleaned = re.sub(r"\n?\s*```\s*$", "", cleaned)
+    cleaned = cleaned.strip()
 
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        # Try to extract JSON object from the response
+        m = re.search(r"\{[\s\S]*\}", cleaned)
         if not m:
+            logging.error("AI returned non-JSON. First 300 chars: %s", cleaned[:300])
             raise HTTPException(status_code=502, detail="AI returned non-JSON output")
-        data = json.loads(m.group(0))
+        try:
+            data = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            logging.error("AI JSON parse failed. Extracted: %s", m.group(0)[:300])
+            raise HTTPException(status_code=502, detail="AI returned malformed JSON")
     return data
 
 
