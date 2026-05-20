@@ -30,9 +30,7 @@ export default function Help() {
 
       {/* About card */}
       <div className="mb-8 rounded-3xl border border-border bg-card p-8 text-center">
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
-          <span className="font-arabic text-3xl leading-none">د</span>
-        </div>
+        <img src="/favicon.png" alt="DeenGuide Logo" className="mx-auto h-16 w-16 rounded-2xl shadow-lg" />
         <h2 className="mt-4 font-heading text-2xl font-bold">DeenGuide</h2>
         <p className="mt-1 text-sm text-muted-foreground">An AI-powered Islamic knowledge companion</p>
         <p className="mt-1 text-xs text-muted-foreground">Version 1.0.0</p>
