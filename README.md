@@ -2,7 +2,7 @@
 
 A comprehensive Islamic web application with AI-powered guidance, Quran reader, Hadith collections, Prayer Times, Duas, and more. Built for Muslims seeking authentic knowledge from the Quran and Sunnah.
 
-**Live:** [deenguide.app](https://deenguide.app)
+**Live:** [deenguide-seven.vercel.app](https://deenguide-seven.vercel.app)
 
 ---
 
