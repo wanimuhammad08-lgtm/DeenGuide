@@ -21,6 +21,12 @@ export const quran = {
   tafsirs: () => http.get("/quran/tafsirs").then((r) => r.data),
   tafsir: (surah, ayah, edition = "en-tafisr-ibn-kathir") =>
     http.get(`/quran/tafsir/${surah}/${ayah}`, { params: { edition } }).then((r) => r.data),
+  reflections: (surah, ayah) =>
+    http.get(`/quran/reflections/${surah}/${ayah}`).then((r) => r.data).catch(() => ({ posts: [] })),
+  setReadingBookmark: (surah, ayah) =>
+    http.post(`/quran/reading-bookmark`, null, { params: { surah, ayah } }).then((r) => r.data).catch(() => null),
+  getReadingBookmark: () =>
+    http.get("/quran/reading-bookmark").then((r) => r.data).catch(() => null),
 };
 
 export const hadith = {

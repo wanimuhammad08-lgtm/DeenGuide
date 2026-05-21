@@ -1608,6 +1608,108 @@ async def get_dua_bookmarks():
     return []
 
 
+# ── Quran Foundation User API (Reading Progress & Bookmarks) ──
+QF_USER_API_BASE = "https://apis.quran.foundation/auth"
+
+@api.post("/quran/reading-bookmark")
+async def set_reading_bookmark(surah: int = Query(...), ayah: int = Query(...)):
+    """Set the user's reading bookmark using Quran Foundation User API."""
+    token_data = await quran_token()
+    access_token = token_data.get("access_token")
+    client_id = os.environ.get("QURAN_FOUNDATION_CLIENT_ID")
+    
+    if not access_token:
+        raise HTTPException(status_code=500, detail="Could not get Quran Foundation token")
+    
+    try:
+        r = await asyncio.to_thread(
+            requests.post,
+            f"{QF_USER_API_BASE}/v1/bookmarks",
+            json={
+                "key": surah,
+                "type": "ayah",
+                "verseNumber": ayah,
+                "isReading": True,
+                "mushafId": 4  # UthmaniHafs
+            },
+            headers={
+                "x-auth-token": access_token,
+                "x-client-id": client_id,
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+        if r.status_code == 200:
+            return {"success": True, "message": f"Reading bookmark set to {surah}:{ayah}"}
+        else:
+            return {"success": False, "message": f"API returned {r.status_code}", "detail": r.text[:200]}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+@api.get("/quran/reading-bookmark")
+async def get_reading_bookmark():
+    """Get the user's reading bookmark from Quran Foundation User API."""
+    token_data = await quran_token()
+    access_token = token_data.get("access_token")
+    client_id = os.environ.get("QURAN_FOUNDATION_CLIENT_ID")
+    
+    if not access_token:
+        raise HTTPException(status_code=500, detail="Could not get Quran Foundation token")
+    
+    try:
+        r = await asyncio.to_thread(
+            requests.get,
+            f"{QF_USER_API_BASE}/v1/bookmarks",
+            params={"isReading": "true"},
+            headers={
+                "x-auth-token": access_token,
+                "x-client-id": client_id,
+            },
+            timeout=10
+        )
+        if r.status_code == 200:
+            return r.json()
+        else:
+            return {"data": None}
+    except Exception:
+        return {"data": None}
+
+
+@api.get("/quran/reflections/{surah}/{ayah}")
+async def get_reflections(surah: int, ayah: int):
+    """Get community reflections for a specific ayah from Quran Reflect (Content API)."""
+    token_data = await quran_token()
+    access_token = token_data.get("access_token")
+    client_id = os.environ.get("QURAN_FOUNDATION_CLIENT_ID")
+    
+    if not access_token:
+        raise HTTPException(status_code=500, detail="Could not get Quran Foundation token")
+    
+    try:
+        r = await asyncio.to_thread(
+            requests.get,
+            f"https://apis.quran.foundation/content/api/v4/posts",
+            params={
+                "filter": f"{surah}:{ayah}",
+                "type": "reflection",
+                "per_page": 5,
+                "language": "en"
+            },
+            headers={
+                "x-auth-token": access_token,
+                "x-client-id": client_id,
+            },
+            timeout=10
+        )
+        if r.status_code == 200:
+            return r.json()
+        else:
+            return {"posts": []}
+    except Exception:
+        return {"posts": []}
+
+
 # ── Mount ──
 app.include_router(api)
 

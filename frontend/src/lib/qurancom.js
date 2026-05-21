@@ -86,4 +86,14 @@ export const qurancom = {
 
   // Get first verse of a specific page
   pageStart: (page) => quranApi.get(`/verses/by_page/${page}`, { params: { per_page: 1 } }).then((r) => r.data.verses[0]),
+
+  // Quran Reflect — Get community reflections for a verse (Content API - Post APIs)
+  reflections: (verseKey) => quranApi.get(`/posts`, {
+    params: {
+      filter: verseKey,
+      type: "reflection",
+      per_page: 5,
+      language: "en"
+    }
+  }).then((r) => r.data?.posts || []).catch(() => []),
 };
