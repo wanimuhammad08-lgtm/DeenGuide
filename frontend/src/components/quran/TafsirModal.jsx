@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Bookmark, BookText, ChevronDown, Loader2 } from 'lucide-react';
+import { X, Play, Pause, Bookmark, BookText, ChevronDown, Loader2 } from 'lucide-react';
 import { quran } from '@/lib/api';
 import { qurancom } from '@/lib/qurancom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,7 +44,8 @@ export default function TafsirModal({
   ayahData,
   onPlayAyah,
   onBookmarkAyah,
-  arabicScript = 'tajweed'
+  arabicScript = 'tajweed',
+  isPlaying = false
 }) {
   const [activeLang, setActiveLang] = useState('English');
   const [activeEdition, setActiveEdition] = useState(169);
@@ -113,7 +114,7 @@ export default function TafsirModal({
               <span className="text-sm font-bold text-primary">{surahNumber}:{ayahNumber}</span>
               <div className="flex items-center gap-4">
                 <button onClick={() => onPlayAyah(ayahNumber)} className="text-muted-foreground hover:text-primary transition-colors">
-                  <Play className="h-4 w-4 fill-current" />
+                  {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
                 </button>
                 <button onClick={() => onBookmarkAyah(ayahNumber)} className="text-muted-foreground hover:text-primary transition-colors">
                   <Bookmark className="h-4 w-4" />

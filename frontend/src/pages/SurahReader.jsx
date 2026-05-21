@@ -1562,6 +1562,7 @@ export default function SurahReader() {
           toggle('ayahs', { id: bkId, surah: data.number, surah_name: data.englishName, ayah: num, arabic: a?.arabic, translation: a?.translation });
         }}
         arabicScript={arabicScript}
+        isPlaying={playing && currentIdxRef.current === (data?.ayahs.findIndex(a => a.number === tafsirPanelAyahNum) ?? -1)}
       />
 
       {/* Sticky Audio Player */}
