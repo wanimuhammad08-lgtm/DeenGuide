@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Pause, Bookmark, BookText, ChevronDown, Loader2, MessageCircle } from 'lucide-react';
+import { X, Play, Pause, Bookmark, BookText, ChevronDown, Loader2 } from 'lucide-react';
 import { quran } from '@/lib/api';
 import { qurancom } from '@/lib/qurancom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,7 +50,7 @@ export default function TafsirModal({
   const [activeLang, setActiveLang] = useState('English');
   const [activeEdition, setActiveEdition] = useState(169);
   const [content, setContent] = useState({ loading: false, text: '' });
-  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:tafsir-font-size') || '2'));
+  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:tafsir-font-size') || '1'));
   const [showFontWidget, setShowFontWidget] = useState(false);
 
   useEffect(() => {
@@ -200,9 +200,6 @@ export default function TafsirModal({
             )}
           </div>
 
-          {/* Community Reflections from Quran Reflect (Quran Foundation Posts API) */}
-          <ReflectionsSection surah={surahNumber} ayah={ayahNumber} />
-
           {/* Footer Navigation (Optional) */}
           <div className="px-8 py-6 border-t border-border/10 flex items-center justify-center gap-4 text-sm font-medium text-muted-foreground">
              <BookText className="h-4 w-4" /> Scholarly verified content from Quran.com
@@ -210,57 +207,5 @@ export default function TafsirModal({
         </div>
       </div>
     </>
-  );
-}
-
-// Community Reflections from Quran Reflect (Quran Foundation Posts API)
-function ReflectionsSection({ surah, ayah }) {
-  const [reflections, setReflections] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    if (!surah || !ayah) return;
-    setLoading(true);
-    quran.reflections(surah, ayah)
-      .then(data => {
-        setReflections(data?.posts || []);
-      })
-      .finally(() => setLoading(false));
-  }, [surah, ayah]);
-
-  if (loading) return null;
-  if (!reflections.length) return null;
-
-  return (
-    <div className="px-8 py-6 border-t border-border/20">
-      <button 
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors"
-      >
-        <MessageCircle className="h-4 w-4" />
-        Community Reflections ({reflections.length})
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </button>
-      {expanded && (
-        <div className="mt-4 space-y-4">
-          {reflections.slice(0, 5).map((post, i) => (
-            <div key={i} className="rounded-xl bg-accent/10 border border-border/30 p-4">
-              <p className="text-[13px] leading-relaxed text-foreground/85">
-                {(post.body || post.text || "").slice(0, 300)}{(post.body || post.text || "").length > 300 ? "..." : ""}
-              </p>
-              {post.author_name && (
-                <p className="mt-2 text-[11px] text-muted-foreground font-medium">
-                  — {post.author_name}
-                </p>
-              )}
-            </div>
-          ))}
-          <p className="text-[11px] text-muted-foreground text-center">
-            Reflections from Quran Reflect · Quran Foundation
-          </p>
-        </div>
-      )}
-    </div>
   );
 }

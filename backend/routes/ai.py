@@ -17,6 +17,19 @@ from core.hadith_data import (
 from services.dua_service import dua_service
 from core.hadith_data import extract_keywords, keyword_score
 
+try:
+    from google import genai as google_genai
+    import os
+    _gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    _gemini_client = google_genai.Client(api_key=_gemini_key) if _gemini_key else None
+    if _gemini_client:
+        logging.info("Gemini fallback client initialized")
+    else:
+        logging.warning("GEMINI_API_KEY not set — Gemini fallback disabled")
+except Exception as _e:
+    logging.warning("Failed to initialize Gemini client: %s", _e)
+    _gemini_client = None
+
 router = APIRouter()
 
 SYSTEM_PROMPT = """You are DeenGuide AI, an empathetic, highly knowledgeable Islamic scholar following the orthodox Ahl al-Sunnah wal Jama'ah.
@@ -81,32 +94,81 @@ def retrieve_duas(question: str, limit: int = 3) -> List[Dict[str, Any]]:
 
 
 async def generate_answer(question: str, mode: str, session_id: str, context: str, conversation_history: list = None) -> Dict[str, Any]:
-    if not groq_client:
-        raise RuntimeError("Groq API key not configured")
+    if not groq_client and not _gemini_client:
+        raise RuntimeError("No AI provider configured (set GROQ_API_KEY or GEMINI_API_KEY)")
+
     depth_note = "Be thorough and scholarly." if mode == "deep" else "Be simple and beginner-friendly."
     user_text = f"""USER QUESTION: {question}\n\nEXPLANATION DEPTH: {depth_note}\n\nRELEVANT CONTEXT (use what fits, ignore the rest):\n{context}\n\nRespond ONLY with the JSON object as instructed. No markdown fences."""
+
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if conversation_history:
         for turn in conversation_history[-6:]:
             messages.append({"role": turn["role"], "content": turn["content"]})
     messages.append({"role": "user", "content": user_text})
-    response = await asyncio.to_thread(
-        groq_client.chat.completions.create,
-        model="llama-3.3-70b-versatile",
-        messages=messages,
-        temperature=0.3,
-        max_tokens=2500,
-        response_format={"type": "json_object"},
-    )
-    cleaned = re.sub(r"^```(?:json)?\s*", "", response.choices[0].message.content.strip())
+
+    response_text = None
+
+    # Try Groq first
+    if groq_client:
+        try:
+            response = await asyncio.to_thread(
+                groq_client.chat.completions.create,
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                temperature=0.3,
+                max_tokens=2500,
+                response_format={"type": "json_object"},
+            )
+            response_text = response.choices[0].message.content.strip()
+            logging.info("AI response from Groq (length=%d)", len(response_text))
+        except Exception as e:
+            logging.warning("Groq failed: %s (%s) — falling back to Gemini", type(e).__name__, e)
+
+    # Fallback to Gemini
+    if response_text is None and _gemini_client:
+        gemini_prompt = f"{SYSTEM_PROMPT}\n\n{user_text}"
+        for model_name in ["models/gemini-2.0-flash", "models/gemini-2.5-flash"]:
+            try:
+                resp = await asyncio.to_thread(
+                    _gemini_client.models.generate_content,
+                    model=model_name,
+                    contents=gemini_prompt,
+                    config={"temperature": 0.3, "max_output_tokens": 2500},
+                )
+                response_text = resp.text
+                logging.info("AI response from Gemini (%s)", model_name)
+                break
+            except Exception as e:
+                logging.warning("Gemini %s failed: %s", model_name, e)
+                continue
+
+    if response_text is None:
+        raise RuntimeError("All AI providers failed")
+
+    cleaned = re.sub(r"^```(?:json)?\s*", "", response_text.strip())
     cleaned = re.sub(r"\s*```$", "", cleaned)
+    # Try to extract the JSON object
+    m = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if m:
+        cleaned = m.group(0)
+    # Fix common JSON issues from LLMs: trailing commas before } or ]
+    cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if not m:
-            raise
-        return json.loads(m.group(0))
+    except json.JSONDecodeError as e:
+        logging.error("JSON parse failed: %s\nRaw (first 500): %s", e, cleaned[:500])
+        # Return a minimal valid structure with the raw text as the answer
+        return {
+            "detailed_answer": response_text.strip(),
+            "answer": "",
+            "explanation": "",
+            "quran_refs": [],
+            "custom_hadiths": [],
+            "scholarly_notes": "",
+            "conclusion": "",
+            "evidence_type": "AI Generated",
+            "related_duas": [],
+        }
 
 
 @router.post("/ai/ask", response_model=AskResponse)
@@ -130,10 +192,20 @@ async def ai_ask(req: AskRequest):
     duas_text = ("\nRELATED DUAS:\n" + "\n".join(f"- {d['title']} ({d['reference']}): {d['translation']}" for d in duas)) if duas else ""
     context = f"HADITH LIBRARY (cite hadiths ONLY by these IDs):\n{library_text}{duas_text}"
 
-    try:
-        data = await generate_answer(req.question, req.mode, session_id, context, req.conversation_history or [])
-    except Exception:
-        logging.exception("AI generation failed; serving local fallback")
+    data = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            data = await generate_answer(req.question, req.mode, session_id, context, req.conversation_history or [])
+            break
+        except Exception as e:
+            last_err = e
+            logging.warning("AI generation attempt %d failed: %s", attempt + 1, e)
+            if attempt < 2:
+                await asyncio.sleep(1.5 * (attempt + 1))
+
+    if data is None:
+        logging.exception("AI generation failed after 3 attempts; serving local fallback", exc_info=last_err)
         data = {
             "answer": "The AI service is temporarily unavailable. Here is guidance from authentic sources.",
             "explanation": "Please reflect on the hadiths shown. For deeper context, consult a knowledgeable scholar.",

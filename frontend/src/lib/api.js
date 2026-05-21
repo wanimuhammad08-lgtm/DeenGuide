@@ -8,7 +8,7 @@ export const API = `${BACKEND_URL}/api`;
 const http = axios.create({ baseURL: API, timeout: 60000 });
 
 export const ai = {
-  ask: (payload) => http.post("/ai/ask", payload).then((r) => r.data),
+  ask: (payload) => http.post("/ai/ask", payload, { timeout: 120000 }).then((r) => r.data),
 };
 
 export const quran = {
