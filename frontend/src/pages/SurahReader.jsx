@@ -4,6 +4,7 @@ import {
   ArrowLeft, ArrowRight, Loader2, Play, Pause, Bookmark, BookmarkCheck,
   Languages, Mic2, Sparkles, ChevronDown, ChevronRight, BookText, Volume2, MessageSquareText,
   Music, Settings, Share2, Copy, MoreHorizontal, List, FileText, PlayCircle, Info, X, Search,
+  MessageCircle,
   Rewind, FastForward, Download, RefreshCw, Zap, User, GraduationCap, Lightbulb
 } from "lucide-react";
 import { quran } from "@/lib/api";
@@ -1390,6 +1391,12 @@ export default function SurahReader() {
                                   className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
                                 >
                                   <Languages className="h-4 w-4" /> Word by Word
+                                </button>
+                                <button
+                                  onClick={() => { setTafsirPanelAyahNum(a.number); setTafsirPanelOpen(true); setOpenMoreMenu(null); }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium text-foreground hover:bg-accent/50 transition-colors"
+                                >
+                                  <MessageCircle className="h-4 w-4" /> Reflections
                                 </button>
                                 <div className="border-t border-border/40" />
                                 <button
