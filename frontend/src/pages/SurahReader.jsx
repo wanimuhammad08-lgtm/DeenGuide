@@ -1360,7 +1360,7 @@ export default function SurahReader() {
                       </div>
                       <div className="flex items-center gap-5 text-muted-foreground">
                         <button onClick={() => { navigator.clipboard.writeText(`${a.arabic}\n\n${a.translation}`); toast.success("Ayah copied!"); }} className="text-foreground hover:text-primary transition-colors" title="Copy"><Copy className="h-5 w-5" /></button>
-                        <button onClick={() => { navigator.clipboard.writeText(`https://deenguide.app/quran/${data.number}/${a.number}`); toast.success("Link copied!"); }} className="text-foreground hover:text-primary transition-colors" title="Share"><Share2 className="h-5 w-5" /></button>
+                        <button onClick={async () => { const text = `${a.arabic}\n\n${a.translation}\n\n— Surah ${data.englishName} ${data.number}:${a.number}\n\nhttps://deenguide-seven.vercel.app/quran/${data.number}#ayah=${a.number}`; if (navigator.share) { try { await navigator.share({ title: `Surah ${data.englishName} ${data.number}:${a.number}`, text }); return; } catch(_){} } navigator.clipboard.writeText(text); toast.success("Ayah copied!"); }} className="text-foreground hover:text-primary transition-colors" title="Share"><Share2 className="h-5 w-5" /></button>
                         {/* ... menu */}
                         <div className="relative">
                           <button
