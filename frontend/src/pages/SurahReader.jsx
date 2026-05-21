@@ -178,7 +178,7 @@ export default function SurahReader() {
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const [tafsirPanelOpen, setTafsirPanelOpen] = useState(false);
   const [tafsirPanelAyahNum, setTafsirPanelAyahNum] = useState(null);
-  const [tafsirFontSize, setTafsirFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:tafsir-font-size') || '2'));
+  const [tafsirFontSize, setTafsirFontSize] = useState(() => parseInt(localStorage.getItem('deenguide:tafsir-font-size') || '1'));
   const [tafsirWidget, setTafsirWidget] = useState(null);
   const [playbackSpeed, setPlaybackSpeed] = useState(() => parseFloat(localStorage.getItem('deenguide:speed') || '1'));
   const [repeatMode, setRepeatMode] = useState(() => localStorage.getItem('deenguide:repeat') || 'off'); // 'off' | 'one' | 'all'
