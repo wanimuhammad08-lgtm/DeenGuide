@@ -11,7 +11,6 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from core.config import db
-from core.hadith_data import _ensure_all_books_loaded, _hadith_v2_cache
 from routes import ai, quran, hadith, duas
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -46,15 +45,8 @@ app.include_router(api)
 
 
 @app.on_event("startup")
-async def warmup_hadith_corpus():
-    async def _bg():
-        try:
-            await _ensure_all_books_loaded()
-            total = sum(len(v) for v in _hadith_v2_cache.values())
-            logging.info("Hadith v2 corpus pre-warmed: %d hadiths across %d books", total, len(_hadith_v2_cache))
-        except Exception:
-            logging.exception("Pre-warm failed (will retry lazily on first request)")
-    asyncio.create_task(_bg())
+async def startup():
+    logging.info("DeenGuide API started — Hadith powered by Kalimat API")
 
 
 if __name__ == "__main__":

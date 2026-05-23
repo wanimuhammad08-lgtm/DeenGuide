@@ -23,8 +23,5 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # ── External API bases ──
 ALQURAN_BASE = "https://api.alquran.cloud/v1"
-HADITH_CDN = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions"
 TAFSIR_CDN = "https://cdn.jsdelivr.net/gh/spa5k/tafsir_api@main/tafsir"
-AHMEDBASET_CDN = "https://cdn.jsdelivr.net/gh/AhmedBaset/hadith-json@main/db/by_book/the_9_books"
-AHMEDBASET_OTHER_CDN = "https://cdn.jsdelivr.net/gh/AhmedBaset/hadith-json@main/db/by_book/other_books"
 QURAN_COM_TAFSIR_BASE = "https://api.quran.com/api/v4/tafsirs"
