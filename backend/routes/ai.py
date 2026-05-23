@@ -16,6 +16,7 @@ from core.hadith_data import (
 )
 from services.dua_service import dua_service
 from core.hadith_data import extract_keywords, keyword_score
+from services.kalimat_client import verify_hadiths_batch
 
 try:
     from google import genai as google_genai
@@ -222,6 +223,13 @@ async def ai_ask(req: AskRequest):
             "narrator": ch.get("narrator", ""), "arabic": ch.get("arabic", ""),
             "english": ch.get("english", ""), "authenticity": ch.get("authenticity", "Sahih"),
         })
+
+    # Verify hadiths against Kalimat API for correct numbering
+    if hadith_refs:
+        try:
+            hadith_refs = await asyncio.to_thread(verify_hadiths_batch, hadith_refs)
+        except Exception:
+            logging.warning("Kalimat verification failed; using AI-generated refs")
 
     record_id = str(uuid.uuid4())
     resp = AskResponse(
